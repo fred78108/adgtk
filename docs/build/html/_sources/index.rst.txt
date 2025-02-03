@@ -41,6 +41,7 @@ To install the package, you can use pip:
 
    pip install adgtk
 
+This is useful for when you wish to run the toolkit in your own projects.
 
 Manual installation from source
 -------------------------------
@@ -48,14 +49,14 @@ Manual installation from source
 If you wish to clone the repository and install the package manually, you can do so by following these steps:
 
 1. active your virtual environment.
-2. Download the project from GitHub.
+2. Download the project from https://github.com/fred78108/adgtk.
 3. from the root folder of adgtk, run the following command:
 
 .. code-block:: console
 
    (.venv) $ python -m pip install -e .
 
-This will let you modify your copy of the project and evaluate the results.
+This will let you modify your copy of adgtk and evaluate the results. This is useful for development of your own version of adgtk.
 
 
 Usage
