@@ -1,0 +1,35 @@
+<html>
+  <head>
+    <title>{{experiment_name}}</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  </head>
+  <body>
+    <H1>Preview report for {{experiment_name}}</H1>    
+      {% if comments is defined %}
+      <H2>Comments</H2>
+      <ul>
+        {% for comment in comments %}
+          <li>{{ comment }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+    <H2>Configuration</H2>
+    The experiment used the following Configuration
+    <pre>
+        <code>
+        {{scenario_def}}
+        </code>
+    </pre>    
+
+    {% if data_section is defined %}
+      {{ data_section }}
+    {% endif %}
+    
+    {% if measurement_section is defined %}
+      {{ measurement_section }}
+    {% endif %}
+
+  </body>
+</html>
+  

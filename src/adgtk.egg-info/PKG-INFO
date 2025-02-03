@@ -1,0 +1,23 @@
+Metadata-Version: 2.2
+Name: adgtk
+Version: 0.0.1
+Summary: A framework for researching automation of synthetic data generation via reinforcement learning.
+Author-email: Frederick Diehl <fdiehl@ualr.edu>
+Project-URL: Homepage, https://github.com/pypa/sampleproject
+Project-URL: Issues, https://github.com/pypa/sampleproject/issues
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: toml
+Requires-Dist: jinja2
+Requires-Dist: PyYAML
+Requires-Dist: regex
+Requires-Dist: requests
+Requires-Dist: anytree
+Requires-Dist: pandas
+Requires-Dist: matplotlib
+Requires-Dist: prompt_toolkit

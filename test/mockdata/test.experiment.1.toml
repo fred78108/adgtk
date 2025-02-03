@@ -1,0 +1,16 @@
+comments = "pytest scenario/experiment testing"
+
+[configuration]
+group_label = "scenario"
+type_label = "one"
+
+[configuration.arguments.pet]
+group_label = "pet"
+type_label = "home"
+
+[configuration.arguments.pet.arguments.cat]
+group_label = "cat"
+type_label = "tabby"
+
+[configuration.arguments.pet.arguments.cat.arguments]
+count = 1

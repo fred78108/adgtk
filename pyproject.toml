@@ -1,0 +1,89 @@
+[project]
+name = "adgtk"
+version = "0.1.0a1"
+authors = [
+  { name="Frederick Diehl", email="fdiehl@ualr.edu" },
+]
+description = "A framework for researching automation of synthetic data generation."
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "toml",
+  "jinja2",
+  "PyYAML",
+  "regex",
+  "requests",
+  "anytree",
+  "pandas",
+  "matplotlib", 
+  "prompt_toolkit"
+]
+
+[project.urls]
+Homepage = "https://github.com/pypa/sampleproject"
+Issues = "https://github.com/pypa/sampleproject/issues"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]
+addopts = [
+    "--import-mode=importlib", "--ignore=project_template",
+]
+
+[tool.mypy]
+pretty = true
+check_untyped_defs = true
+
+
+[[tool.mypy.overrides]]
+module = [
+    "toml",
+    "yaml",
+    "jinja2"
+]
+ignore_missing_imports = true
+
+
+[tool.tox]
+requires = ["tox>=4.23.2"]
+basepython = "python3.12.7"
+env_list = ["3.12.7", "type"]
+
+[tool.tox.env_run_base]
+description = "Run test under {base_python}"
+deps = ["pytest"]
+commands = [["pytest"]]
+
+[tool.tox.env.type]
+description = "run type check on code base"
+deps = ["mypy"]
+commands = [["mypy", "src", "--no-namespace-packages", "--ignore-missing-imports"]]
+
+[tool.tox.env.lint]
+description = "run linter on code base"
+deps = ["flake8"]
+commands = [["flake8", "src"]]
+
+[project.scripts]
+adgtk-mgr = "adgtk.management.cli:manager"
+# adgtk = "adgtk.management.cli:manager"
+# adgtk-plugin-wizard = "adgtk.management.cli:plugin_creator"
+
+
+[tool.setuptools.package-data]
+adgtk = ["*.tar", "*.tar.gz"]
+
+# [tool.tox.env.docs]
+# deps = [  "sphinx-autobuild","sphinx-build"]
+# commands = [["sphinx-build -n -W --keep-going -b html docs/ docs/_build/"]]

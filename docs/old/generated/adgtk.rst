@@ -1,0 +1,6 @@
+﻿adgtk
+=====
+
+.. automodule:: adgtk
+
+   

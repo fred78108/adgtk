@@ -1,0 +1,30 @@
+<html>
+  <head>
+    <title>{{experiment_name}}</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  </head>
+  <body>
+    <H1>Experimental approach</H1>
+    <H2>Experiment Comments</H2>
+        {% if experiment_comments is defined %}
+                {{ experiment_comments }}
+            {% else %}
+                No comments specified in the experiment definition.
+        {% endif %}
+
+    <H2>Run notes</H2>
+        {% if run_notes is defined %}
+                {{ run_notes }}
+            {% else %}
+                No run notes
+        {% endif %}
+    <H2>Configuration</H2>
+    The experiment used the following Configuration
+    <pre>
+        <code>
+{{blueprint}}
+        </code>
+    </pre>    
+  </body>
+</html>
+  

@@ -1,0 +1,220 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extending &mdash; adgtk 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Roadmap" href="../roadmap.html" />
+    <link rel="prev" title="Architecture" href="architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: white" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            adgtk
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../concept.html">Concept and Design</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Extending</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#building-blocks">Building blocks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#creating-a-component">Creating a Component</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../concept.html#project">Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concept.html#experiment">Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concept.html#factory">Factory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../roadmap.html">Roadmap</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: white" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">adgtk</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../concept.html">Concept and Design</a></li>
+      <li class="breadcrumb-item active">Extending</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/concept/extending.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="extending">
+<h1>Extending<a class="headerlink" href="#extending" title="Link to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<p>You are not limited to the components that are provided. You can create your own components and use them in your experiments. The toolkit is designed to be extensible. By following the pattern provided you can create your own components and use them in your experiments.</p>
+<a class="reference internal image-reference" href="../_images/adgtk.c4.plugin.png"><img alt="ADGTK Plugin Diagram" class="align-center" src="../_images/adgtk.c4.plugin.png" style="width: 800px;" />
+</a>
+<section id="building-blocks">
+<h2>Building blocks<a class="headerlink" href="#building-blocks" title="Link to this heading"></a></h2>
+<p>ADGTK components are the building blocks of an Experiment. The foundation to creating your own component is the FactoryBlueprint.</p>
+<p>A FactoryBlueprint is a Dict with the following keys:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">FactoryBlueprint</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">group_label</span><span class="p">:</span> <span class="n">Required</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">type_label</span><span class="p">:</span> <span class="n">Required</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">arguments</span><span class="p">:</span> <span class="n">Required</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ArgumentSetting</span><span class="p">]]</span>
+    <span class="n">introduction</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The ArgumentSetting supports the UX such as the wizard.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArgumentSetting</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The indiviudal setting.&quot;&quot;&quot;</span>
+    <span class="n">help_str</span><span class="p">:</span> <span class="n">Required</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">argument_type</span><span class="p">:</span> <span class="n">Required</span><span class="p">[</span><span class="n">ArgumentType</span><span class="p">]</span>
+    <span class="n">default_value</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+    <span class="n">group_label</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>               <span class="c1"># require when Blueprint</span>
+    <span class="n">list_arg_type</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="n">ArgumentType</span><span class="p">]</span>    <span class="c1"># arg type for lists</span>
+    <span class="n">list_group_label</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>          <span class="c1"># for list of Blueprints</span>
+    <span class="n">list_intro</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                <span class="c1"># UX for lists</span>
+    <span class="n">list_min</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>                  <span class="c1"># minimum list count</span>
+    <span class="n">introduction</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>By having a consistent ArgumentSetting and Blueprint the factory can construct any type of component with a diverse set of parameters on init. The ArgumentSetting is only used by wizards, etc. This will be translated by the wizard into an internal representation that is used by the Factory to create the component. This is saved to disk as either a yaml or toml file in your experiment definition folder.</p>
+</section>
+<section id="creating-a-component">
+<h2>Creating a Component<a class="headerlink" href="#creating-a-component" title="Link to this heading"></a></h2>
+<p>In order for your component to be created by the Factory you must implement the FactoryImplementable Protocol. You need to have 3 items in your Class:</p>
+<ul class="simple">
+<li><p>blueprint: FactoryBlueprint</p></li>
+<li><p>description: str</p></li>
+<li><p>__init__</p></li>
+</ul>
+<p>Your class is required to have a blueprint and a description. The blueprint is used to create the component and the description is used when listing the components. You register your component with the factory in your module __init__.py file. Which is explained in more detail below.</p>
+<p>Consider you have a new Class you want to use in experiments called MyComponent. It belongs to the group my-group along with other components of the same type. For this component you want to initialize with an int called counter.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">adgtk.common</span><span class="w"> </span><span class="kn">import</span> <span class="n">FactoryBlueprint</span><span class="p">,</span> <span class="n">ArgumentSetting</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">adgtk.journals</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExperimentJournal</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyComponent</span><span class="p">:</span>
+
+    <span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Used when listing factory details.&quot;</span>
+
+    <span class="c1"># The blueprint is used for interacting with a user or agent to</span>
+    <span class="c1"># describe your class and its arguments.</span>
+    <span class="n">blueprint</span><span class="p">:</span> <span class="n">FactoryBlueprint</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;group_label&quot;</span><span class="p">:</span> <span class="s2">&quot;my-group&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;type_label&quot;</span><span class="p">:</span> <span class="s2">&quot;my-component&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;arguments&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;counter&quot;</span><span class="p">:</span> <span class="n">ArgumentSetting</span><span class="p">(</span>
+                <span class="n">help_str</span><span class="o">=</span><span class="s2">&quot;An example of how to tell the factory to pass a value&quot;</span><span class="p">,</span>
+                <span class="n">default_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">argument_type</span><span class="o">=</span><span class="n">ArgumentType</span><span class="o">.</span><span class="n">INT</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">factory</span><span class="p">:</span> <span class="n">ObjectFactory</span><span class="p">,</span>
+        <span class="n">journal</span><span class="p">:</span> <span class="n">ExperimentJournal</span><span class="p">,</span>
+        <span class="n">counter</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">agent</span><span class="p">:</span> <span class="n">ComponentDef</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">=</span> <span class="n">counter</span>
+</pre></div>
+</div>
+<p>There are two arguments that when present on your init cause the Factory to pass in as values. The two are factory and journal. If you do not need either then you can remove them from the init and the Factory will not pass them in.</p>
+<p>You would want to use the Factory when your component needs to create child components. For example, an Agent that creates a policy based on a definition instead of being hard coded.  The journal is used to track data and results.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The factory and journal argument names are reserved so as to not conflict with the factory initialization. This design choice reduces the number of items in your configuration file.</p>
+</div>
+<p>in this example assume your module is named plugin. Your plugin module __init__.py file should have a register_list and look like:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># import your class</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.demo</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyComponent</span>
+
+<span class="c1"># and the scenario manager / factory looks for register_list</span>
+<span class="n">register_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">MyComponent</span><span class="p">,]</span>
+</pre></div>
+</div>
+<p>And the last step is to ensure your project.toml (or yaml) file has the user_modules set to your module name. This is how the Factory knows which modules to look for the register_list at.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">user_modules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&quot;plugin&quot;</span><span class="p">,]</span>
+</pre></div>
+</div>
+<p>Within the experiment definition file the definition will look like (assuming the user entered 5):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">configuration</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-group</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-component</span>
+<span class="w">    </span><span class="nt">counter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+</pre></div>
+</div>
+<p>when the experiment definition is loaded by the ScenarioManager it instructs the Factory to create an instance of your MyComponent class with the counter set to 5. The factory will pass in the factory and journal as well as they are pre-defined in the Factory to instantiate the component when present.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="architecture.html" class="btn btn-neutral float-left" title="Architecture" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../roadmap.html" class="btn btn-neutral float-right" title="Roadmap" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Fred Diehl.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

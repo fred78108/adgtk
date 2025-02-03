@@ -1,0 +1,20 @@
+# May not be needed now. keeping just in case.
+
+# See the adgtk.creators.defaults to ensure consistent
+
+default_file_format = "toml"
+blueprint_dir = "tmp-blueprints"
+
+[experiment]
+data_dir = "test/mockdata"
+results_dir = "tmp-results"
+tensorboard_dir = "tmp-runs"
+definition_dir = "test/mockdata"
+
+[logging]
+log_dir = "tmp-logs"
+level = "basic"
+
+
+# see test_scenario_manager.py MOCK_MODULE. they should match
+load_modules = ["mockmodule"]

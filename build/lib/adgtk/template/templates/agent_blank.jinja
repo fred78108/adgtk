@@ -1,0 +1,57 @@
+{% raw %}
+"""
+
+"""
+
+
+
+from adgtk.components import State, Action
+from adgtk.environment import Environment
+
+{% endraw %}
+class {{agent_class_name}}(Protocol):
+{% raw %}
+    blueprint: dict = {}
+
+    def execute(self) -> None:
+        """ "Execute actions based on Agent type (interacting with env,
+        expanding data, etc).
+        """
+        pass
+
+    def preview(self) -> None:
+        """Builds a preview of the Agent."""
+        pass
+
+    def engage(self, state: State) -> Action:
+        """Engages the Agent for a single record.
+
+        Args:
+            state (State): The state to execute the policy against
+
+        Returns:
+            Action: The action to take
+        """
+        pass
+
+    def train(
+        self,
+        train_environment: Environment,
+        val_environment: Environment = None,
+        test_environment: Environment = None,
+        epochs: int = 1,
+    ) -> None:
+        """Explores an environment and trains the provided policy to
+        learn how to predict match versus non-match for the entities.
+
+        Args:
+            train_environment (Environment): The env for training
+            val_environment (Environment, optional): validation env.
+                Defaults to None.
+            test_environment (Environment, optional): The test env.
+                Defaults to None.
+            epochs (int, optional): outer epochs, for the agent not the
+                policy update. Defaults to 1.
+        """
+        pass
+{% endraw %}

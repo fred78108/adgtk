@@ -1,0 +1,2 @@
+[console_scripts]
+adgtk-mgr = adgtk.management.cli:manager

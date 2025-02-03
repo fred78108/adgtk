@@ -1,0 +1,9 @@
+toml
+jinja2
+PyYAML
+regex
+requests
+anytree
+pandas
+matplotlib
+prompt_toolkit

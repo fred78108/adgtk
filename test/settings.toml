@@ -1,0 +1,29 @@
+# ADGTK - Agent Data Generation Tool-Kit
+
+# See the adgtk.creators.defaults to ensure consistent
+
+default_file_format = "toml"
+blueprint_dir = "tmp-blueprints"
+
+[experiment]
+data_dir = "test/mockdata"
+results_dir = "tmp-results"
+tensorboard_dir = "tmp-runs"
+definition_dir = "test/mockdata"
+
+[logging]
+log_dir = "tmp-logs"
+level = "basic"
+
+[terminal]
+use_color = true
+
+[terminal.css]
+error = "red"
+error_dark = "red"
+build = "blue"
+build_dark = "light_blue"
+execution = "green"
+execution_dark = "light_green"
+emphasis = "cyan"
+emphasis_dark = "light_cyan"

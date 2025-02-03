@@ -1,0 +1,197 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ADGTK - Agentic Data Generation Toolkit &mdash; adgtk 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=2709fde1"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Concept and Design" href="concept.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: white" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            adgtk
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="concept.html">Concept and Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="roadmap.html">Roadmap</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: white" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">adgtk</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ADGTK - Agentic Data Generation Toolkit</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="adgtk-agentic-data-generation-toolkit">
+<h1>ADGTK - Agentic Data Generation Toolkit<a class="headerlink" href="#adgtk-agentic-data-generation-toolkit" title="Link to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="concept.html">Concept and Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="roadmap.html">Roadmap</a></li>
+</ul>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This project is in the early stages of development. As this package is under active development the API and documentation are subject to change. Please check back often for updates.</p>
+</div>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>Agentic Data Generation Toolkit is designed to provide an easy to use interface for both a human user as well as an Agent. The primary purpose of this Toolkit is to provide a framework for experimentation with Agents that generate data. The framework provides all the automation needed to excute a scenario while providing the user with both consistent measurements across scenarios as well as tracking and reporting of results.</p>
+<p>The goal is to provide an easy to modify or extend toolkit to support your research needs.</p>
+</section>
+<section id="highlights">
+<h2>Highlights<a class="headerlink" href="#highlights" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>A “lab journal” which can be invoked through an experiment.</p></li>
+<li><p>Reports saved to disk of both preview and results of an experiment.</p></li>
+<li><p>Extensible architecture. The framework is designed to be extensible on load and during execution.</p></li>
+<li><p>Custom components can be created and used in your experiments. You are not constrained to the components that are provided.</p></li>
+</ul>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<section id="via-pypi">
+<h3>Via PyPi<a class="headerlink" href="#via-pypi" title="Link to this heading"></a></h3>
+<p>To install the package, you can use pip:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">pip install adgtk</span>
+</pre></div>
+</div>
+</section>
+<section id="manual-installation-from-source">
+<h3>Manual installation from source<a class="headerlink" href="#manual-installation-from-source" title="Link to this heading"></a></h3>
+<p>If you wish to clone the repository and install the package manually, you can do so by following these steps:</p>
+<ol class="arabic simple">
+<li><p>active your virtual environment.</p></li>
+<li><p>Download the project from GitHub.</p></li>
+<li><p>from the root folder of adgtk, run the following command:</p></li>
+</ol>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(.venv)</span> <span class="gp">$ </span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</pre></div>
+</div>
+<p>This will let you modify your copy of the project and evaluate the results.</p>
+</section>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<section id="command-structure">
+<h3>Command structure<a class="headerlink" href="#command-structure" title="Link to this heading"></a></h3>
+<p>ADGTK is designed to be run from the command line. The primary command is <cite>adgtk-mgr</cite>. This command is used to manage the toolkit. The command has a number of subcommands that are used to manage the toolkit.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">adgtk-mgr [options]</span>
+
+<span class="go">Commands:</span>
+<span class="go">   project      : Project management (create, destroy)</span>
+<span class="go">   experiment   : Experiment operations (create, run, list, preview)</span>
+<span class="go">   factory      : List Factory or if include a group the group listing</span>
+
+<span class="go">options:</span>
+<span class="go">-h, --help            show a help message and exits</span>
+<span class="go">-f FILE, --file FILE  override the settings file with this file</span>
+<span class="go">--version             show program&#39;s version number and exit</span>
+<span class="go">--yaml                Use YAML format when creating the project settings file</span>
+
+<span class="go">Project</span>
+<span class="go">-------</span>
+<span class="gp">   $ </span>adgtk-mgr<span class="w"> </span>project<span class="w"> </span>create<span class="w"> </span>example1<span class="w">   </span>Creates<span class="w"> </span>a<span class="w"> </span>new<span class="w"> </span>project<span class="w"> </span>called<span class="w"> </span>example1
+<span class="gp">   $ </span>adgtk-mgr<span class="w"> </span>project<span class="w"> </span>destroy<span class="w"> </span>example1<span class="w">  </span>deletes<span class="w"> </span>the<span class="w"> </span>example1<span class="w"> </span>project
+
+<span class="go">Experiment</span>
+<span class="go">----------</span>
+<span class="gp">   $ </span>adgtk-mgr<span class="w"> </span>experiment<span class="w"> </span>list<span class="w">           </span>lists<span class="w"> </span>all<span class="w"> </span>available<span class="w"> </span>experiments
+<span class="gp">   $ </span>adgtk-mgr<span class="w"> </span>experiment<span class="w"> </span>create<span class="w">         </span>Starts<span class="w"> </span>a<span class="w"> </span>wizard<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>an<span class="w"> </span>experiment
+<span class="gp">   $ </span>adgtk-mgr<span class="w"> </span>experiment<span class="w"> </span>create<span class="w"> </span>exp1<span class="w">     </span>Starts<span class="w"> </span>a<span class="w"> </span>wizard<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>an<span class="w"> </span>experiment<span class="w"> </span>with<span class="w"> </span>the<span class="w"> </span>name<span class="w"> </span>exp1
+<span class="gp">   $ </span>adgtk-mgr<span class="w"> </span>experiment<span class="w"> </span>run<span class="w">            </span>via<span class="w"> </span>a<span class="w"> </span>menu<span class="w"> </span><span class="k">select</span><span class="w"> </span>and<span class="w"> </span>run<span class="w"> </span>an<span class="w"> </span>experiment
+<span class="gp">   $ </span>adgtk-mgr<span class="w"> </span>experiment<span class="w"> </span>run<span class="w"> </span>exp1<span class="w">       </span>Run<span class="w"> </span>exp1
+
+<span class="go">Factory</span>
+<span class="go">-------</span>
+<span class="gp">   $ </span>adgtk-mgr<span class="w"> </span>factory<span class="w">                   </span>Lists<span class="w"> </span>available<span class="w"> </span>factory<span class="w"> </span>blueprints
+<span class="gp">   $ </span>adgtk-mgr<span class="w"> </span>factory<span class="w"> </span>agent<span class="w">             </span>Lists<span class="w"> </span>agent<span class="w"> </span>factory<span class="w"> </span>blueprints
+</pre></div>
+</div>
+<p>When your not creating or destroying a project by default the toolkit will look for a file called <cite>project.toml</cite> in the current directory. This file is used to store the settings for the project. If you want to use a different file you can use the <cite>–file</cite> option to specify the file to use. For example, to use a file called <cite>settings1.toml</cite> you would use the following command:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>adgtk-mgr<span class="w"> </span>--file<span class="w"> </span>settings1.toml<span class="w"> </span>factory
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="concept.html" class="btn btn-neutral float-right" title="Concept and Design" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Fred Diehl.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
