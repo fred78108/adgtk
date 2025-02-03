@@ -5,7 +5,7 @@ authors = [
   { name="Frederick Diehl", email="fdiehl@ualr.edu" },
 ]
 description = "A framework for researching automation of synthetic data generation."
-readme = "README.md"
+readme = "README.rst"
 requires-python = ">=3.12"
 classifiers = [
     "Development Status :: 3 - Alpha",
