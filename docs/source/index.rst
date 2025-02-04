@@ -39,7 +39,7 @@ To install the package, you can use pip:
 
 .. code-block:: console
 
-   pip install adgtk
+   $ pip install adgtk
 
 This is useful for when you wish to run the toolkit in your own projects.
 
@@ -54,7 +54,7 @@ If you wish to clone the repository and install the package manually, you can do
 
 .. code-block:: console
 
-   (.venv) $ python -m pip install -e .
+   $ python -m pip install -e .
 
 This will let you modify your copy of adgtk and evaluate the results. This is useful for development of your own version of adgtk.
 
