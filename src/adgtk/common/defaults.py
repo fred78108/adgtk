@@ -11,6 +11,7 @@ DEFAULT_FILE_FORMAT: Literal["yaml", "toml"] = "yaml"
 DEFAULT_JOURNAL_REPORTS_DIR = "reports"
 
 # changeable by the user
+DEFAULT_MODEL_DIR = "saved_models"
 DEFAULT_EXP_DEF_DIR = "experiment-def"
 DEFAULT_DATA_DIR = "data"
 DEFAULT_SETTINGS = {
@@ -32,7 +33,7 @@ DEFAULT_SETTINGS = {
         'reward',
         'policy'],
     "default_file_format": DEFAULT_FILE_FORMAT,
-    "blueprint_dir": "blueprints",
+    "model_dir": DEFAULT_MODEL_DIR,
     "logging": {
         "log_dir": "logs",
         "level": "basic"

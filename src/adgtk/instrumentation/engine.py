@@ -26,7 +26,7 @@ from adgtk.tracking import MetricTracker
 from adgtk.factory.component import ObjectFactory
 from adgtk.journals import ExperimentJournal
 from .base import SupportsMeasSetOps
-
+from adgtk.tracking import MetricTracker
 
 # ----------------------------------------------------------------------
 #

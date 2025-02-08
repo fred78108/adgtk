@@ -17,3 +17,11 @@ class InsufficientData(Exception):
 
     def __init__(self, message: str = default_msg):
         super().__init__(message)
+
+
+class InvalidConfigException(Exception):
+    """Used for any situation where the configuration is not valid"""
+    default_msg = 'Invalid configuration'
+
+    def __init__(self, message:str = default_msg):
+        super().__init__(message)

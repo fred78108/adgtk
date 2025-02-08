@@ -2,7 +2,6 @@
 
 import logging
 import sys
-import os
 from typing import Literal, Union
 from prompt_toolkit import prompt
 from prompt_toolkit.validation import Validator, ValidationError

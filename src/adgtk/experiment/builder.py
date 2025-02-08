@@ -36,7 +36,6 @@ class ExperimentBuilder():
 
         if scenario_manager is None:
             self.scenario_manager = ScenarioManager(
-                blueprint_dir="blueprints",
                 load_user_modules=load_user_modules,
                 experiment_definition_dir=experiment_definition_dir)
         else:
@@ -208,6 +207,8 @@ class ExperimentBuilder():
             msg = f"Invalid blueprint: {setting}. Missing group_label"
             logging.error(msg)
             raise InvalidBlueprint(msg)
+        else:
+            exp_def["group_label"] = setting["group_label"]
 
         try:
             type_listing = self.get_registered(

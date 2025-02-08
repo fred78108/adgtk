@@ -8,6 +8,7 @@ ADGTK - Agentic Data Generation Toolkit
    
    concept
    roadmap
+   changes/index
 
 
 .. warning::

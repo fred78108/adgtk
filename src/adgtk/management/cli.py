@@ -134,8 +134,6 @@ def build_folders_from_settings():
         os.makedirs(name=settings.experiment["definition_dir"], exist_ok=True)
     if not os.path.exists(settings.logging["log_dir"]):
         os.makedirs(name=settings.logging["log_dir"], exist_ok=True)
-    if not os.path.exists(settings.blueprint_dir):
-        os.makedirs(name=settings.blueprint_dir, exist_ok=True)
 
 
 def create_settings_file(

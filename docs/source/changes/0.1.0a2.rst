@@ -1,0 +1,5 @@
+=============
+ADGTK 0.1.0a2
+=============
+
+Initial release. This is an early version of the ADGTK framework. It is not feature complete and is not recommended for production use. It is intended for researchers who are interested in the framework and would like to provide feedback and feature requests.

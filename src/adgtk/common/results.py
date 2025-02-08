@@ -101,17 +101,28 @@ class FolderManager:
         self.performance = os.path.join(exp_result_dir, PERFORMANCE_FOLDER)
         os.makedirs(self.performance, exist_ok=True)
 
+        # Models - added 0.1.1a1
+        self.model_dir = "models"
+        try:
+            self.model_dir = settings.model_dir
+        except AttributeError:
+            logging.warning("Using older settings file. No model_dir found")
+            self.model_dir = os.path.join(exp_result_dir, "models")
+
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir, exist_ok=True)
+
         # and additional/existing files/folders
         self.logfile = os.path.join(settings.logging["log_dir"], f"{name}.log")
         self.data_dir = settings.experiment["data_dir"]
         self.tensorboard_dir = settings.experiment["tensorboard_dir"]
-        self.blueprint_dir = settings.blueprint_dir
 
     def __str__(self) -> str:
         to_string = "FolderManager\n"
         to_string += "-------------\n"
         to_string += f" - log: {self.logfile}\n"
         to_string += f" - tensorboard: {self.tensorboard_dir}\n"
+        to_string += f" - models: {self.model_dir}\n"
         to_string += f" - metrics: {self.metrics}\n"
         to_string += f"    - data: {self.metrics_data}\n"
         to_string += f"    - images: {self.metrics_img}\n"

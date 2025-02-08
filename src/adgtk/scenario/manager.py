@@ -50,56 +50,6 @@ from .base import Scenario, SCENARIO_GROUP_LABEL
 # Functions
 # ----------------------------------------------------------------------
 
-def save_blueprint_to_file(
-    blueprint: FactoryBlueprint,
-    filename: str,
-    blueprint_dir: str,
-    blueprint_format: Literal["toml", "yaml"]
-) -> None:
-    """Formats and saves the blueprint to disk.
-
-    Args:
-        blueprint (FactoryBlueprint): The blueprint
-        blueprint_dir (str): The folder to save blueprint to
-        filename (str): The file to save. if no extension given it will
-            add the appropriate extension, ex: file.yaml or file.toml
-        format (Literal["toml","yaml"]): The format
-
-    Raises:
-        NotImplementedError: TODO Dev
-    """
-    # ensure folder exists
-    os.makedirs(name=blueprint_dir, exist_ok=True)
-
-    # format the output
-    file_w_ext = filename
-    if blueprint_format == "toml":
-        if not filename.lower().endswith(".toml"):
-            file_w_ext = f"{filename}.toml"
-        else:
-            file_w_ext = filename
-        file_w_path = os.path.join(blueprint_dir, file_w_ext)
-        with open(file_w_path, "w", encoding="utf-8") as outfile:
-            toml.dump(blueprint, outfile)
-    elif blueprint_format == "yaml":
-        if not filename.lower().endswith(".yaml"):
-            file_w_ext = f"{filename}.yaml"
-        else:
-            file_w_ext = filename
-
-        file_w_path = os.path.join(blueprint_dir, file_w_ext)
-        with open(file_w_path, "w", encoding="utf-8") as outfile:
-            yaml.safe_dump(
-                blueprint,
-                outfile,
-                default_flow_style=False,
-                sort_keys=False)
-    else:
-        raise NotImplementedError("TODO: use the setting default!")
-
-    # save to disk
-    file_w_path = os.path.join(blueprint_dir, file_w_ext)
-
 
 # ----------------------------------------------------------------------
 # Management : running experiments and creating blueprints
@@ -110,7 +60,6 @@ class ScenarioManager:
 
     def __init__(
         self,
-        blueprint_dir: str = "blueprints",
         experiment_definition_dir: str = "experiment-definition",
         settings_file_override: Union[str, None] = None,
         load_base: bool = True,
@@ -119,7 +68,6 @@ class ScenarioManager:
         if load_user_modules is None:
             load_user_modules = []
 
-        self.blueprint_dir = blueprint_dir
         self.experiment_definition_dir = experiment_definition_dir
         self.active_scenario: Union[Scenario, None] = None
         self.settings_file_override = settings_file_override
@@ -398,12 +346,6 @@ class ScenarioManager:
             group_label=group_label,
             type_label=type_label)
 
-        if blueprint is not None:
-            save_blueprint_to_file(
-                blueprint=blueprint,
-                blueprint_dir=self.blueprint_dir,
-                blueprint_format="toml",
-                filename=f"{group_label}.{type_label}")
 
     def register(
         self,

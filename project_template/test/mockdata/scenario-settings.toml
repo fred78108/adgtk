@@ -3,7 +3,6 @@
 # See the adgtk.creators.defaults to ensure consistent
 
 default_file_format = "toml"
-blueprint_dir = "tmp-blueprints"
 
 [experiment]
 data_dir = "test/mockdata"

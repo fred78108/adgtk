@@ -10,6 +10,7 @@ For the User Interface the current release is fairly basic. The roadmap for the 
 
 - Provide a menu driven experience for the CLI when no command is provided.
 - Provide a split screen view for the experiment builder.
+- Provide the ability in a blueprint to filter based on a need (attribute). e.x. matching model wrapper only, not generation. 
 
 Experiments
 ===========

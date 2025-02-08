@@ -40,29 +40,11 @@ from .base import DuplicateFactoryRegistration, FactoryImplementable
 # used for development and troubleshooting.
 LOG_FACTORY_CREATE = True
 
-README_TEXT = """BLUEPRINT_DIR
-=============
-This folder and its contents are re-created everytime the factory is loaded.
-
-IMPORTANT: Do not edit any file in this folder as any changes will be lost.
-
-The purpose of this folder is to provide you with all the blueprints if you want
-to craft your experiment by hand. You can of course always use:
-
-adgtk-mgr -b 
-
-which will provide you an interactive experience for crafting your experiment.
-
-Note: The current version only supports blueprints to toml. Future versions may support additional versions.
-"""
-
-
 def uses_factory_on_init(component: FactoryImplementable) -> bool:
     if inspect.isclass(component):
         args = inspect.signature(component).parameters
         if "factory" in args:
             return True
-
     return False
 
 
@@ -71,7 +53,6 @@ def uses_journal_on_init(component: FactoryImplementable) -> bool:
         args = inspect.signature(component).parameters
         if "journal" in args:
             return True
-
     return False
 
 
@@ -87,8 +68,7 @@ class ObjectFactory:
         self,
         journal: ExperimentJournal,
         factory_name: str = "Object Factory",
-        settings_file_override: Union[str, None] = None,
-        create_blueprint_files: bool = False
+        settings_file_override: Union[str, None] = None
     ) -> None:
         self.factory_name = factory_name
         # A common place to establish the folder manager
@@ -98,7 +78,6 @@ class ObjectFactory:
         self.settings_file_override = settings_file_override
         self.folder_manager: FolderManager
 
-        self.create_blueprint_files = create_blueprint_files
         self._journal = journal
 
         self._registry: dict[str, dict[str, FactoryImplementable]] = {}
@@ -107,16 +86,6 @@ class ObjectFactory:
         self.settings = load_settings()
         # formatting
         self.file_format = self.settings.default_file_format
-        self.blueprint_dir = self.settings.blueprint_dir
-
-        # Blueprint dir preperation
-        if create_blueprint_files:
-            if not os.path.exists(self.blueprint_dir):
-                os.makedirs(self.blueprint_dir)
-
-            readme_file = os.path.join(self.blueprint_dir, "README.md")
-            with open(file=readme_file, mode="w", encoding="utf-8") as outfile:
-                outfile.write(README_TEXT)
 
     def __len__(self) -> int:
         return self.registered_count
@@ -188,37 +157,6 @@ class ObjectFactory:
             # ideally should not happen but if it does keep going!
             return "description not set"
 
-    def _save_blueprint(self, blueprint: FactoryBlueprint) -> None:
-        file_w_path = os.path.join(
-            self.blueprint_dir,
-            f"{blueprint['group_label']}.{blueprint['type_label']}")
-
-        file_w_path += ".toml"
-        with open(file=file_w_path, mode="w", encoding="utf-8") as outfile:
-            toml.dump(blueprint, outfile)
-
-        return None
-
-        # issues with yaml safe_dump and blueprints. Future work may
-        # research alternative options for writing yaml to disk for the
-        # blueprint. For now, defaulting to toml only. This is also an
-        # edge case. Most users will hopefully use the CLI wizard. This
-        # option may therefore be removed in future releases.
-        if self.file_format == "toml":
-            file_w_path += ".toml"
-            with open(file=file_w_path, mode="w", encoding="utf-8") as outfile:
-                toml.dump(blueprint, outfile)
-        elif self.file_format == "yaml":
-            file_w_path += ".yaml"
-            with open(file=file_w_path, mode="w", encoding="utf-8") as outfile:
-                try:
-                    yaml.safe_dump(blueprint,
-                                   outfile,
-                                   default_flow_style=False,
-                                   sort_keys=False)
-                except yaml.representer.RepresenterError:
-                    print(f"Failed to save: {blueprint['type_label']}")
-
     def register(
         self,
         creator: Any,
@@ -264,9 +202,6 @@ class ObjectFactory:
 
         c_group[type_label] = creator
 
-        # and create a local file should the user want to create by hand
-        if self.create_blueprint_files:
-            self._save_blueprint(creator.blueprint)
 
         self.registered_count += 1
 

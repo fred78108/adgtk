@@ -5,7 +5,6 @@ files in the requested format YAML, TOML. etc.
 """
 project_defaults = {
     "default_file_format": "toml",
-    "blueprint_dir": "blueprints",
     "experiment": {
         "data_dir": "data",
         "results_dir": "results",
