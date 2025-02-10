@@ -1,0 +1,10 @@
+=============
+ADGTK 0.1.1a1
+=============
+This release focused on expanding the model support, a bug fix and cleanup of code that was not longer useful for the user.
+
+
+- Expanded model support and management for experiments.
+- Updated requirements.txt for the sample project.
+- Removed the blueprint folder usage.
+- Fixed bug with experiment building overriding the group label.

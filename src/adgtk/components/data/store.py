@@ -6,9 +6,6 @@ provide a Protocol for any implementation of a wrapper for a database.
 
 By using a consistent wrapper it enables ease of extensibility as well
 as code maintenance as it allows for loose coupling across Modules.
-
-Implementations can opt to inherit the DataStore class or implement the
-prootocl directly.
 """
 
 # pylint: disable=unused-argument

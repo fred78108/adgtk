@@ -17,11 +17,11 @@ import logging
 from typing import Union, Any, List
 from adgtk.common import (
     FactoryBlueprint,
+    InvalidBlueprint,
     ArgumentSetting,
     ArgumentType,
     ComponentDef)
 from adgtk.factory.component import ObjectFactory
-from adgtk.factory.base import InvalidBlueprint
 from adgtk.components.data import PresentationFormat, PresentableRecord, PresentableGroup
 from structure.presentation.simple import YamlPresentation
 

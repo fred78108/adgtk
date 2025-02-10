@@ -60,7 +60,7 @@ class FixedDictEnvironment:
         self.reward_func = self.factory.create(reward_function)
         self.reward_func = cast(RewardFunction, self.reward_func)
         self.single_state = State(
-            type=StateType.DICT,
+            state_type=StateType.DICT,
             value=fixed_state,
             label=1)
         # state management

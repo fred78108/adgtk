@@ -81,25 +81,25 @@ def get_state_keys(state: State) -> list:
     """
     list_data: list[dict]
     data: dict
-    if state.type == StateType.STRING:
+    if state.state_type == StateType.STRING:
         list_data = process_possible_yaml(state.value)
         if isinstance(list_data[0], dict):
             return list(list_data[0].keys())
-    elif state.type == StateType.DICT:
+    elif state.state_type == StateType.DICT:
         if isinstance(state.value, dict):
             return list(state.value.keys())
-    elif state.type == StateType.PRESENTABLE_RECORD:
+    elif state.state_type == StateType.PRESENTABLE_RECORD:
         if isinstance(state.value, PresentableRecord):
             data = state.value.create_copy_of_data()
             return list(data.keys())
-    elif state.type == StateType.PRESENTABLE_GROUP:
+    elif state.state_type == StateType.PRESENTABLE_GROUP:
         if isinstance(state.value, PresentableGroup):
             if len(state.value) > 0:
                 data = state.value[0].create_copy_of_data()
                 return list(data.keys())
 
     # should not make it here unless there is a problem
-    msg = f"Unexpected State processing for type {state.type.name}."
+    msg = f"Unexpected State processing for type {state.state_type.name}."
     logging.error(msg)
     return []
 

@@ -1,4 +1,6 @@
-"""_summary_
+"""The Presentation module is focused on defining Protocols for 
+presenting data. These protocol(s) are intented to be used by the
+components responsible for presenting data in a specific format.
 """
 
 

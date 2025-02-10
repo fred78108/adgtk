@@ -1,5 +1,6 @@
 # mypy: ignore-errors
-"""Scenario base
+"""Policy protoocols provides the foundational components for creating
+your own policy.
 """
 
 

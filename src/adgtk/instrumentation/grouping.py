@@ -108,6 +108,7 @@ class MeasurementSet:
     ) -> None:
         """MeasurementSet ensures that the engine can properly
         interact with the individual measurements.
+
         :param factory: The object factory
         :type factory: ObjectFactory
         :param journal: The Experiment journal
@@ -115,13 +116,13 @@ class MeasurementSet:
         :param name: The unique name of the measurement set
         :type name: str
         :param measurement_type: The type of measurement
-        :type measurement_type: Literal[&quot;single&quot;, &quot;compare&quot;, &quot;dataset&quot;]
+        :type measurement_type: Literal[single, compare,,dataset]
         :param director_override_blueprint: The director used for determing whether to run a measurement against a data type.
         :type director_override_blueprint: Union[dict, None]
         :param expected_result: The type of result expected from the measurement. Used to further filter measurements to run.
-        :type expected_result: Literal[&quot;float&quot;, &quot;list&quot;, &quot;string&quot;, &quot;int&quot;]
+        :type expected_result: Literal[float, list, string, int]
         :param record_as: How should they be presented as output?
-        :type record_as: Literal[&quot;sum&quot;, &quot;avg&quot;, &quot;latest&quot;]
+        :type record_as: Literal[sum;, avg, latest]
         :param measure_only: Provides filtering of data type
         :type measure_only: Union[List[Union[str, None]], None]
         :param filters: A filter of the data, defaults to None

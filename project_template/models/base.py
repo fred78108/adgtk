@@ -1,4 +1,4 @@
-"""_summary_
+"""Model operations.
 """
 
 from typing import Protocol, runtime_checkable, Iterable, Any

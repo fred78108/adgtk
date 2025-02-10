@@ -5,13 +5,13 @@ import os
 import pytest
 import toml
 import test.mockdata.mock as mockdata
-from adgtk.common import DEFAULT_SETTINGS
+from adgtk.common import (
+    DEFAULT_SETTINGS,
+    DuplicateFactoryRegistration,
+    InvalidBlueprint)
 from adgtk.journals import ExperimentJournal
 from adgtk.factory.component import uses_factory_on_init, uses_journal_on_init
-from adgtk.factory import (
-    DuplicateFactoryRegistration,
-    InvalidBlueprint,
-    ObjectFactory)
+from adgtk.factory import ObjectFactory
 
 # ----------------------------------------------------------------------
 #

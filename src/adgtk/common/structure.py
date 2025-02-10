@@ -1,10 +1,20 @@
-"""Common structure. Primary purpose is to avoid circular imports as
-well as consistent data structure.
+"""Common structure. This module is used to define the common structures
+that are used throughout the package.
 """
 
 import logging
 from enum import Enum, auto
-from typing import TypedDict, Required, Any, Union, cast, Optional, NotRequired
+from typing import (
+    TypedDict,
+    Required,
+    Any,
+    Union,
+    cast,
+    Literal,
+    NotRequired,
+    Callable,
+    Protocol,
+    runtime_checkable)
 from numbers import Number
 import anytree
 
@@ -18,7 +28,9 @@ import anytree
 
 
 class ArgumentType(Enum):
-    """Identify the argument type."""
+    """Identify the argument type within the blueprint. The primary use
+    for this ArgumentType is for for experiment builder to know what
+    type of argument to prompt the user for."""
     BLUEPRINT = auto()
     INT = auto()
     FLOAT = auto()
@@ -30,7 +42,27 @@ class ArgumentType(Enum):
 
 
 class ArgumentSetting(TypedDict):
-    """The indiviudal setting."""
+    """The indiviudal setting. It is flexible enough to handle a wide
+    variety of settings. The ArgumentSetting is used to define the
+    arguments within a blueprint. Depending on the argument type, the
+    different keys are used. For example, if the argument type is a
+    ArgumentType.LIST then the list_arg_type is required. If the type
+    is ArgumentType.BOOL then it is not. 
+
+    The primary purpose of this structure is to provide an easy way to
+    define the arguments for the experiment builder to use when
+    interacting with the user.
+    
+    Notes:
+        * group_label: Required for factory registration        
+        * help_str: Required for UX
+        * defualt_value: Required for UX
+        * list_arg_type: Required for lists
+        * list_group_label: Required for lists of Blueprints
+        * list_intro: Required for lists, UX use only
+        * list_min: Required for lists, UX use only
+        * introduction: Required for UX
+    """
     help_str: Required[str]
     argument_type: Required[ArgumentType]    
     default_value: NotRequired[Any]
@@ -42,6 +74,8 @@ class ArgumentSetting(TypedDict):
     introduction: NotRequired[str]
 
     
+# ------------------------- Component Support --------------------------
+
 
 class FactoryBlueprint(TypedDict):
     """A Blueprint is used to create a template for an experiment. The
@@ -64,15 +98,14 @@ class FactoryBlueprint(TypedDict):
     introduction: NotRequired[str]
 
 
-class ExperimentDefinition(TypedDict):
-    """The outer wrapper of an experiment. writes to disk, etc
-
-    :param TypedDict: _description_
-    :type TypedDict: _type_
+@runtime_checkable
+class FactoryImplementable(Protocol):
+    """Can be registered and created with the factory.
     """
-    configuration: Required[FactoryBlueprint]
-    comments: str
+    blueprint: FactoryBlueprint
+    description: str
 
+    __init__: Callable
 
 class ComponentDef(TypedDict):
     """A ComponenttDef is used to create an ojbect. The    
@@ -83,6 +116,88 @@ class ComponentDef(TypedDict):
     group_label: Required[str]
     type_label: Required[str]
     arguments: Required[dict[str, Union[str, list, int, float, dict]]]
+
+
+class ExperimentDefinition(TypedDict):
+    """The outer wrapper of an experiment. it used to define a specific
+    experiment. The ExperimentDefinition is used within the experiment
+    builder. This is what is written to disk and loaded by the
+    experiment runner.
+
+        * configuration: The configuration of the experiment
+        * comments: A description of the experiment
+    """
+    configuration: Required[FactoryBlueprint]
+    comments: str
+
+
+class SupportsFactoryRegistry(Protocol):
+    """A factory must have the following"""
+
+    def registry_listing(
+        self,
+        group_label: Union[str, None] = None
+    ) -> list[str]:
+        """Lists factory entries. if no group listed it returns groups,
+        else if a group is entered it returns all types in that group.
+
+        :param group_label: A group label, defaults to None
+        :type group_label: Union[str, None], optional
+        :return: A listing of types in a group or all groups
+        :rtype: List[str]
+        """
+
+# --------------------------- Tool Support -----------------------------
+
+class AttributeDefinition(TypedDict):
+    """Used for defining an attribute of a function for tool usage
+
+        * type: The type of the attribute
+        * description: A description of the attribute.
+    """
+    type: Required[Literal["string", "int", "float", "bool", "object"]]
+    description: Required[str]
+
+    
+class ParameterDefinition(TypedDict):
+    """Defines a parameter for a function for tool usage
+    
+        * type: The type of the parameter
+        * description: A description of the parameter
+    """
+    type: Required[Literal["object"]]
+    properties: Required[dict[str, AttributeDefinition]]
+
+
+class FunctionDefinition(TypedDict):
+    """Used to define a function for tool usage
+
+        * name: The name of the function. ex. get_current_time
+        * description: A description of the function.    
+    """
+    name: Required[str]
+    description: Required[str]
+    parameters: Required[dict[str, ParameterDefinition]]
+
+
+class ToolDefinition(TypedDict):
+    """Used to define a tool.
+    
+    * type: The type of tool. ex. "function"
+    * function: The function definition.
+    """
+    type: Required[Literal["function"]]
+    function: Required[FunctionDefinition]
+        
+
+@runtime_checkable
+class ToolFactoryImplementable(Protocol):
+    """Can be registered and created with the tool factory.
+    """
+    definition: ToolDefinition
+    __init__: Callable
+    use: Callable
+
 
 # ----------------------------------------------------------------------
 # functions

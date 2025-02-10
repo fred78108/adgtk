@@ -1,4 +1,6 @@
-"""Base for Records.
+"""The records module provides the types and protocols for working with
+data within your experiment. This module defines only the protocols and
+will leave the realization of these protocols to the implementer.
 """
 
 from typing import (
@@ -16,7 +18,10 @@ from adgtk.common import FactoryBlueprint
 
 @runtime_checkable
 class PresentableRecord(Protocol):
-    """A record that is presentable"""
+    """A protocol for a record that is presentable. It ensures that the
+    implementation is consistent with the requirements across the
+    different objects that will be used to present or process the data.
+"""
 
     def __str__(self) -> str:
         """Generates a string representation
@@ -49,7 +54,7 @@ class SupportsFiltering(Protocol):
     blueprint: FactoryBlueprint
 
     def is_included(self, a: Any) -> bool:
-        """Filters a single objec. Intended to use as part of filtering
+        """Filters a single object. Intended to use as part of filtering
         an iterable object such a list or data store. Implementations
         can opt to use this when they need to define via Factory
 

@@ -10,6 +10,9 @@ import shutil
 import signal
 import tarfile
 import importlib.resources
+import http.server
+from http.server import HTTPServer
+import socketserver
 import toml
 import yaml
 from jinja2 import Environment, FileSystemLoader
@@ -31,6 +34,11 @@ from .intro import intro
 WIZARD_OPTIONS = ("agent", "environment", "policy", "scenario", "custom")
 
 # ----------------------------------------------------------------------
+# Module variables
+# ----------------------------------------------------------------------
+httpd: Union[HTTPServer, None] = None
+http_dir = "html"
+# ----------------------------------------------------------------------
 # Signal handlers
 # ----------------------------------------------------------------------
 
@@ -43,11 +51,54 @@ def signal_handler(signum, frame):
     :param frame: the frame object
     :type frame: stack frame
     """
+    global httpd
     # https://docs.python.org/3/library/signal.html
     if signal.SIGINT == signum:
         print('\nRecievd Ctrl+C! Canceling action.')
+        if httpd is not None:
+            httpd.server_close()
+            print("Server stopped")
     sys.exit(0)
 
+# ----------------------------------------------------------------------
+# Web Server                                                                
+# ----------------------------------------------------------------------
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    """Handler for the web server
+
+    :param http: _description_
+    :type http: _type_
+    """
+    global http_dir
+    def __init__(self, *args, directory=http_dir, **kwargs):        
+        super().__init__(*args, directory=http_dir, **kwargs)
+
+def start_web_server(port: int = 8000, directory: str = "html") -> None:
+    """Starts a web server.
+
+    :param port: The port to listen on, defaults to 8000
+    :type port: int, optional
+    :param directory: The directory to serve, defaults to "html"
+    :type directory: str, optional
+    """
+    global httpd
+    global http_dir
+    http_dir = directory
+    addr = ('', port)
+    try:        
+        # TODO: Fix the type hinting        
+        httpd = socketserver.TCPServer(addr, Handler)   # type: ignore
+        print(f"serving at port {port}")
+        if httpd is not None:
+            httpd.serve_forever()
+        else:
+            print("Failed to start server")
+            sys.exit(1)        
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+    
 
 # ----------------------------------------------------------------------
 # Management
@@ -99,7 +150,7 @@ def parse_args() -> argparse.Namespace:
         "experiment", help="Experiment actions")
     exp_parser.add_argument(
         "action",
-        choices=["create", "destroy", "list", "run", "preview"],
+        choices=["create", "destroy", "list", "run", "preview", "report"],
         help="Available experiment actions")
     exp_parser.add_argument(
         "name",
@@ -571,8 +622,13 @@ Reminder: File must end with .toml or .yaml and be properly formatted.
         elif args.action == "preview":
             print_title(clear_screen_first=True)
             preview(args.Preview)
+        elif args.action == "report":
+            start_web_server(
+                port=settings.server["port"],
+                directory=settings.experiment["results_dir"])
+                    
         sys.exit(0)
-
+            
     elif args.command == "factory":
         if not inside_a_project:
             print("No setttings file found. Please check the path")

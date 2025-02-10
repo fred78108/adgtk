@@ -1,12 +1,21 @@
 """Common module
 """
-from .exceptions import InvalidScenarioState, InsufficientData
+from .exceptions import (
+    DuplicateFactoryRegistration,
+    InvalidConfigException,
+    InvalidScenarioState,
+    InvalidBlueprint,
+    InsufficientData)
 from .structure import (
+    ToolDefinition,
     ExperimentDefinition,
     ComponentDef,
     ArgumentType,
     ArgumentSetting,
+    SupportsFactoryRegistry,
     FactoryBlueprint,
+    FactoryImplementable,
+    ToolFactoryImplementable,
     is_blueprint,
     is_valid_arg_setting,
     default_is_arg_type,

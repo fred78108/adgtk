@@ -27,12 +27,14 @@ class ActionType(Enum):
 
 @dataclass
 class State:
-    type: StateType
-    value: Any
-    label: Any = None
+    """A state object"""
+    state_type: StateType         # The type of the state
+    value: Any              # The value of the state
+    label: Any = None       # A label for the state if one exists
 
 
 @dataclass
 class Action:
-    value: Any
-    type: ActionType
+    """An action object"""
+    value: Any              # The value of the action
+    action_type: ActionType        # The type of the action

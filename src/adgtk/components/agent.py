@@ -35,6 +35,7 @@ class Agent(Protocol):
     ) -> None:
         """Explores an environment and trains the provided policy to
         learn how to predict match versus non-match for the entities.
+
         :param experiment_name: The name of the experiment.
         :type experiment_name: str
         :param train_environment: The env for training
@@ -43,6 +44,6 @@ class Agent(Protocol):
         :type val_environment: Environment, optional
         :param test_environment: The test env
         :type test_environment: Environment, optional
-        :param epochs:  outer epochs, for the agent not the policy
+        :param epochs:  epochs to train, defaults to 1
         :type epochs: int, optional
         """

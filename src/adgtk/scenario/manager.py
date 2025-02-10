@@ -30,12 +30,11 @@ import yaml
 from adgtk.common import (
     FactoryBlueprint,
     ComponentDef,
+    DuplicateFactoryRegistration,
     InvalidScenarioState,
     convert_exp_def_to_string,
     FolderManager)
-from adgtk.factory import (
-    ObjectFactory,
-    DuplicateFactoryRegistration)
+from adgtk.factory import ObjectFactory
 from adgtk.journals import ExperimentJournal
 from adgtk.instrumentation import measurement_register_list
 from .base import Scenario, SCENARIO_GROUP_LABEL

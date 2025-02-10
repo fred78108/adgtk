@@ -2,13 +2,14 @@
 Changelog
 =========
 
-Release 0.1.1a1
+Release 0.1.2a1
 ===============
 
-- Expanded model support and management for experiments.
-- Updated requirements.txt for the sample project.
-- Removed the blueprint folder usage.
-- Fixed bug with experiment building overriding the group label.
+- Added MVP experiment report command functionality to serve via a web server the experiment results folder.
+- Added MVP tool factory.
+- updated organization of code.
+- expanded and updated sample project to include model protocols.
+- added MVP impairment engine.
 
 Prior releases
 ==============
@@ -17,3 +18,4 @@ Prior releases
     :maxdepth: 2
 
     0.1.0a2
+    0.1.1a1

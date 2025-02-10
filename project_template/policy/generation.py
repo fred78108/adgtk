@@ -63,7 +63,7 @@ class FixedGenerationPolicy(Policy):
 
         return Action(
             value=result,
-            type=ActionType.STRING)
+            action_type=ActionType.STRING)
 
     def sample(self, state: State) -> Action:
         """Invokes the policy but does not update for training. It only

@@ -71,11 +71,11 @@ class FixedPromptGenerator(PromptGenerator):
         """
         converted = "NOT_SET"
         if isinstance(data, State):
-            if data.type == StateType.STRING:
+            if data.state_type == StateType.STRING:
                 converted = data.value
-            elif data.type == StateType.DICT:
+            elif data.state_type == StateType.DICT:
                 converted = self.presentation.present(data.value)
-            elif data.type == StateType.PRESENTABLE_RECORD:
+            elif data.state_type == StateType.PRESENTABLE_RECORD:
                 record = data.value
                 record = cast(PresentableRecord, record)
                 if self.override_record_presentation:

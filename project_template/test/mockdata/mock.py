@@ -11,11 +11,11 @@ v 0.1
 from dataclasses import dataclass
 from adgtk.common import (
     FactoryBlueprint,
+    InvalidBlueprint,
     ArgumentSetting,
     ArgumentType,
     ComponentDef)
 from adgtk.factory import (
-    InvalidBlueprint,
     ObjectFactory)
 from adgtk.journals import ExperimentJournal
 

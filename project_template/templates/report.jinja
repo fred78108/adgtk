@@ -38,6 +38,16 @@
       {{ measurement_section }}
     {% endif %}
     
+    <h2>Registered tools</h2>
+    {% if tools is defined%}
+      <ul>
+        {% for tool in tools %}
+          <li>{{ tool }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No tools were registered for this experiment.</p>
+    {% endif %}
   </body>
 </html>
   

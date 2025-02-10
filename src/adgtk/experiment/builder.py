@@ -5,8 +5,8 @@ import os
 from typing import Union, cast
 import toml
 import yaml
-from adgtk.factory import InvalidBlueprint
 from adgtk.common import (
+    InvalidBlueprint,
     FactoryBlueprint,
     ExperimentDefinition,
     ArgumentSetting,

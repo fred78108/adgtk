@@ -1,22 +1,7 @@
-"""Summary goes here.
-
-Versions:
-v 0.1
-- mvp
-
-References:
--
-
-TODO:
-
-1.0 Consider moving to the factory module?
-
-Defects:
-
-1.0
-
-Test
-py -m pytest -s test/factory/test_component_factory.py
+"""Component Factory is focused on registering, tracking, and creating
+instances of user and system defined components. The factory is designed
+to be updated at runtime and is used to create components for running
+experiments.
 """
 
 from __future__ import annotations
@@ -28,11 +13,17 @@ import toml
 import yaml
 from typing import Any, Union, List, TYPE_CHECKING
 from adgtk.journals import ExperimentJournal
-from adgtk.common import FactoryBlueprint, ComponentDef, InvalidScenarioState
-from adgtk.common import FolderManager
-from adgtk.utils import create_line, load_settings
-from .base import DuplicateFactoryRegistration, FactoryImplementable
+from adgtk.common import (
+    DuplicateFactoryRegistration,
+    FactoryImplementable,
+    FactoryBlueprint,
+    ComponentDef,
+    InvalidScenarioState, 
+    FolderManager)
 
+from adgtk.utils import create_line, load_settings
+
+# py -m pytest -s test/factory/test_component_factory.py
 
 # ----------------------------------------------------------------------
 # Module Options
@@ -41,6 +32,13 @@ from .base import DuplicateFactoryRegistration, FactoryImplementable
 LOG_FACTORY_CREATE = True
 
 def uses_factory_on_init(component: FactoryImplementable) -> bool:
+    """Checks if a component uses the factory on init
+
+    :param component: The component to inspect
+    :type component: FactoryImplementable
+    :return: T: Uses factory on init, F: Does not use factory on init
+    :rtype: bool
+    """
     if inspect.isclass(component):
         args = inspect.signature(component).parameters
         if "factory" in args:
@@ -49,6 +47,13 @@ def uses_factory_on_init(component: FactoryImplementable) -> bool:
 
 
 def uses_journal_on_init(component: FactoryImplementable) -> bool:
+    """Checks if a component uses the journal on init
+
+    :param component: The component to inspect
+    :type component: FactoryImplementable
+    :return: T: Uses journal on init, F: Does not use journal on init
+    :rtype: bool
+    """
     if inspect.isclass(component):
         args = inspect.signature(component).parameters
         if "journal" in args:

@@ -125,6 +125,10 @@ src/adgtk/experiment/builder.py
 src/adgtk/factory/__init__.py
 src/adgtk/factory/base.py
 src/adgtk/factory/component.py
+src/adgtk/factory/tool.py
+src/adgtk/impairment/__init__.py
+src/adgtk/impairment/engine.py
+src/adgtk/impairment/processing.py
 src/adgtk/instrumentation/__init__.py
 src/adgtk/instrumentation/base.py
 src/adgtk/instrumentation/engine.py

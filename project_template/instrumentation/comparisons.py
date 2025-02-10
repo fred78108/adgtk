@@ -10,7 +10,7 @@ from adgtk.common import FactoryBlueprint, ArgumentSetting, ArgumentType
 from adgtk.instrumentation import (
     MeasInputType,
     MeasOutputType,
-    MeasurementFeatures,)
+    MeasurementFeatures)
 
 # ----------------------------------------------------------------------
 #

@@ -8,9 +8,6 @@ The goal of this engine is to be as flexible as possible so no other
 engine is needed. However, the framework architecutal approach remains
 consistent in that this too can be swapped out by creation of another
 type in the factory and use a scenario to invoke.
-
-
-# TODO: Implement as part of the engine the STOP_WORD to Measurement!
 """
 
 
@@ -85,6 +82,17 @@ note: The measurement Engine can have one or more measurement sets.""",
         name: str = "default",
         journal: ExperimentJournal | None = None
     ):
+        """Initializes a new instance of the Measurement Engine.
+
+        :param factory: The component factory
+        :type factory: ObjectFactory
+        :param measurement_set_def: measurement set(s), defaults to None
+        :type measurement_set_def: List[ComponentDef] | None, optional
+        :param name: Name of the engine, defaults to "default"
+        :type name: str, optional
+        :param journal: The experiment journal, defaults to None
+        :type journal: ExperimentJournal | None, optional
+        """
         self.metric_tracker: Union[MetricTracker, None] = None
         self.name = name
         self._journal = journal
@@ -190,6 +198,7 @@ note: The measurement Engine can have one or more measurement sets.""",
         for meas_set in self._meas_sets.values():
             meas_set.perform_measurements(data=data)
 
+
     def create_html_and_export(
         self,
         experiment_name: str,
@@ -201,18 +210,21 @@ note: The measurement Engine can have one or more measurement sets.""",
         reports. In addition, exports data, builds images, etc in order
         to save and report.
 
-        :param experiment_name: The experiment name.
+        
+        :param experiment_name: The name of the experiment
         :type experiment_name: str
-        :param settings_file_override: the filename of the settings file,
-            defaults to None which will use the default file/path.
-        :type str, optional
-        :param header: The header, defaults to 1
+        :param settings_file_override: The settings file to use, defaults to None
+        :type settings_file_override: Union[str, None], optional
+        :param header: The header level to use, defaults to 2
         :type header: int, optional
-
-        :return: HTML that can be used in a report.
+        :param base_url: The base URL to use, defaults to "http://127.0.0.01:8000
+        :type base_url: str, optional
+        :return: The HTML to use in the report
         :rtype: str
+        
         """
-
+    
+                
         html = f"""
         <div>
             <h{header}>Measurement Engine {self.name} </h{header}>

@@ -1,4 +1,5 @@
-"""For ease of working with the results folder
+"""For ease of working with the results folder. This module provides
+a class to manage the folder structure for an experiment.
 """
 
 import logging
@@ -29,7 +30,21 @@ PERFORMANCE_FOLDER = "performance"
 
 class FolderManager:
     """A simple class to help manage and ensure a consistent folder
-    structure for an experiment results."""
+    structure for an experiment results. It takes the experiment name
+    and the settings file to create the necessary folders and
+    sub-folders. It also provides an easy way to access the paths to
+    the respective use by reading the attributes.
+    
+    The class has the following useful attributes:
+        * base_folder: the root folder for the experiment
+        * agent: the folder for agent data
+        * metrics: the folder for metrics
+        * metrics_data: the folder for metrics data
+        * metrics_img: the folder for metrics images
+        * dataset: the folder for datasets
+        * performance: the folder for performance data
+        * model_dir: the folder for models
+    """
 
     def __init__(
         self,
@@ -118,6 +133,11 @@ class FolderManager:
         self.tensorboard_dir = settings.experiment["tensorboard_dir"]
 
     def __str__(self) -> str:
+        """Creates a string representation of the FolderManager object
+
+        :return: a useful string for UX via a CLI.
+        :rtype: str
+        """
         to_string = "FolderManager\n"
         to_string += "-------------\n"
         to_string += f" - log: {self.logfile}\n"

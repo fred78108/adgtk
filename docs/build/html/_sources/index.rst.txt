@@ -9,6 +9,7 @@ ADGTK - Agentic Data Generation Toolkit
    concept
    roadmap
    changes/index
+   api/index
 
 
 .. warning::
@@ -95,6 +96,7 @@ ADGTK is designed to be run from the command line. The primary command is `adgtk
       $ adgtk-mgr experiment create exp1     Starts a wizard to build an experiment with the name exp1
       $ adgtk-mgr experiment run            via a menu select and run an experiment
       $ adgtk-mgr experiment run exp1       Run exp1
+      $ adgtk-mgr experiment report         Starts a web server for reports
 
    Factory
    -------

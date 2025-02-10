@@ -39,6 +39,13 @@ class ExperimentJournal:
         use_formatting: bool = True,
         settings_file_override: Union[str, None] = None
     ) -> None:
+        """Creates a new instance of the ExperimentJournal.
+
+        :param use_formatting: staging for CSS, defaults to True
+        :type use_formatting: bool, optional
+        :param settings_file_override: a settings file, defaults to None
+        :type settings_file_override: Union[str, None], optional
+        """
         self.settings_file_override = settings_file_override
         self.use_formatting = use_formatting
         self._scenario_def: str = "NOT-SET"
@@ -48,6 +55,7 @@ class ExperimentJournal:
         self._data_sample: dict[str, list] = {}
         self._data_other: dict[str, list] = {}
         self._data_global: list[str] = []
+        self._tools: list[str] = []
 
        # now load the settings and set the items to manage
         try:
@@ -165,11 +173,18 @@ class ExperimentJournal:
         env = Environment(loader=FileSystemLoader('templates'))
         template = env.get_template("report.jinja")
         date_ran = get_timestamp_now(include_time=True)
+
+        # if no tools then set to None so the template can report none
+        tools:Union[list, None] = self._tools
+        if len(self._tools) == 0:
+            tools = []
+        
         try:
             output = template.render(
                 date_ran=date_ran,
                 experiment_name=experiment_name,
                 comments=self._comments,
+                tools=tools,
                 measurement_section=measurement_html,
                 scenario_def=self._scenario_def,
                 data_section=data_html)
@@ -266,7 +281,7 @@ class ExperimentJournal:
 
     def add_entry(
         self,
-        entry_type: Literal["comment", "scenario_def", "measurement"],
+        entry_type: Literal["comment", "scenario_def", "measurement", "tool"],
         entry_text: str,
         component: Union[str, None] = None,
         include_timestamp: bool = False
@@ -299,3 +314,6 @@ class ExperimentJournal:
         elif entry_type == "measurement":
             if entry not in self._measurements:
                 self._measurements.append(entry)
+        elif entry_type == "tool":
+            if entry not in self._tools:
+                self._tools.append(entry)
