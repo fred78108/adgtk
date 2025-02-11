@@ -10,3 +10,4 @@ Components are useful building blocks for your experiments.
     data.records
     data.presentation
     data.store
+    model

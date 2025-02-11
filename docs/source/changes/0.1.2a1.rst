@@ -1,0 +1,10 @@
+=============
+ADGTK 0.1.2a1
+=============
+This release focused on code cleanup and introduction of both an MVP version of a tool factory and the impairment engine.
+
+- Added MVP experiment report command functionality to serve via a web server the experiment results folder.
+- Added MVP tool factory.
+- updated organization of code.
+- expanded and updated sample project to include model protocols.
+- added MVP impairment engine.
