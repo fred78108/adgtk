@@ -1,19 +1,8 @@
-"""Scenario base
-
-Versions:
-v 0.1
-- mvp
-
-References:
--
-
-TODO:
-
-1.0
-
-Defects:
-
-1.0
+"""The Scenario is the overall wrapper for building an experiment. A
+Scenario is also managed by the ScenarioManager, which is responsible
+for managing the lifecycle of the Scenario. A proper Scenario should
+have at a minimum a method called execute, which will be called by the
+ScenarioManager to run the experiment.
 """
 
 from typing import Protocol, runtime_checkable

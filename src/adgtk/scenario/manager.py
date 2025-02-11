@@ -1,23 +1,5 @@
-"""Scenario Runner
-
-Versions:
-v 0.1
-- mvp
-
-References:
--
-
-TODO:
-
-1.0 consider moving functions to another file in module
-2.0 consider moving default components/blueprints to toml??
-
-Defects:
-
-1.0
-
-Test
-py -m pytest test/scenario/test_scenario_manager.py
+"""The Manager module is responsible for managing the lifecycle of a
+scenario.
 """
 
 import importlib
@@ -39,6 +21,8 @@ from adgtk.journals import ExperimentJournal
 from adgtk.instrumentation import measurement_register_list
 from .base import Scenario, SCENARIO_GROUP_LABEL
 
+# ----------------------------------------------------------------------
+# py -m pytest test/scenario/test_scenario_manager.py
 
 # ----------------------------------------------------------------------
 # Module configs

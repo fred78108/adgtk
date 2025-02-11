@@ -1,6 +1,6 @@
-=========================
-adgtk.common.presentation
-=========================
+==================================
+adgtk.components.data.presentation
+==================================
 
 .. toctree::
    :maxdepth: 2

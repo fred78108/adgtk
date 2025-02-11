@@ -4,8 +4,8 @@ adgtk.scenario
 
 Scenario management
 
-Protocol
---------
+Scenario protocols
+------------------
 
 .. automodule:: adgtk.scenario.base
     :members:
