@@ -10,6 +10,7 @@ ADGTK - Agentic Data Generation Toolkit
    roadmap
    changes/index
    api/index
+   logging
 
 
 .. warning::

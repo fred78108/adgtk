@@ -18,6 +18,9 @@ The MVP release assumes a human interaction. For the target state the toolkit wi
 
 Envision how language models today can use a tool. This facility will provide the tool for your agent for experiment activities.
 
+- add safety checks to prevent overwrite of results
+- add purge of results via CLI (logs, results). Allow for extra dir via project.toml
+
 Data processing
 ===============
 Although the user can create their own measurements using the FactoryBlueprint pattern their are some core components that are shared such as the Measurement Engine and Set. The current MVP release does not support filtering of data before measuring. The first feature will be therefore to introduce the ability to filter data. This filtering mechanism can then be used across the different components such as the Measurement Set or figures.

@@ -148,6 +148,7 @@ src/adgtk/tracking/base.py
 src/adgtk/tracking/performance.py
 src/adgtk/utils/__init__.py
 src/adgtk/utils/cli.py
+src/adgtk/utils/file.py
 src/adgtk/utils/formatting.py
 src/adgtk/utils/logs.py
 src/adgtk/utils/plotting.py

@@ -43,6 +43,11 @@ class FixedGenerationPolicy(Policy):
         self.generator = cast(Generator, self.generator)
         self.prompt = cast(PromptGenerator, self.prompt)
 
+        # for tracking
+        self.experiment_name: Union[str, None] = None
+        self.performance_tracker: Union[PerformanceTracker, None] = None
+
+
     def reset(self) -> None:
         """Resets internal state during training."""
         self.generator.reset()

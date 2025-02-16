@@ -46,6 +46,11 @@ class RandomPolicy:
 
     def __init__(self):
         self.supports_env_type = [StateType.OTHER]
+        
+        # for tracking
+        self.experiment_name: Union[str, None] = None
+        self.performance_tracker: Union[PerformanceTracker, None] = None
+
 
     def reset(self) -> None:
         """Resets internal state during training."""

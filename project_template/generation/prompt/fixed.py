@@ -9,9 +9,9 @@ from adgtk.common import (
     ArgumentSetting,
     ArgumentType)
 from adgtk.components import State, StateType
-from adgtk.components.data import PresentableRecord
+from adgtk.components.data import PresentableRecord, PresentationFormat
 from generation import PromptGenerator
-from adgtk.components.data import PresentationFormat
+
 
 # Note:
 # https://typing.readthedocs.io/en/latest/spec/protocol.html#protocols

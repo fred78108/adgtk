@@ -4,7 +4,7 @@ This is a pre-release development version of the project.
 """
 
 
-__version__ = "0.1.2a1"
+__version__ = "0.1.2a3"
 
 __author__ = "Fred Diehl"
 

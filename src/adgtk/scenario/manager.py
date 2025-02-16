@@ -170,7 +170,7 @@ class ScenarioManager:
         try:
             # loaded_module = importlib.import_module(user_spec.name)
             loaded_module = importlib.import_module(user_module)
-            msg = f"Loaded {user_module}"
+            msg = f"ScenarioManager Loaded module {user_module}"
             logging.info(msg)
         except ModuleNotFoundError as e:
             # moved to not using user_spec so that the user can get a

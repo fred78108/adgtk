@@ -3,7 +3,7 @@
 """
 
 import logging
-from typing import List, cast
+from typing import cast
 from adgtk.common import (
     FactoryBlueprint,
     ArgumentSetting,
@@ -21,6 +21,9 @@ class CsvEnvironment:
     """Environment focused on a presentable record as the state and
     expecting a state of a string. This is a common envirnment for
     generation testing."""
+
+    uses_state_types: list[StateType] = [StateType.PRESENTABLE_RECORD]
+    supports_action_types: list[ActionType] = [ActionType.STRING]
 
     description = "Environment loads a CSV and uses this data as state."
     blueprint: FactoryBlueprint = {
@@ -49,9 +52,7 @@ class CsvEnvironment:
                 help_str="The CSV to load into the datastore")
         }
     }
-
-    uses_state_types: List[StateType] = [StateType.PRESENTABLE_RECORD]
-    supports_action_types: List[ActionType] = [ActionType.STRING]
+    
 
     def __init__(
         self,

@@ -242,21 +242,18 @@ class GenerationAgent:
 
         if self.journal is not None:
             self.journal.log_data_write(
-                experiment_name=experiment_name,
                 description="Sample Prompts",
                 file_w_path=sample_prompt_w_path_file,
                 component=f"agent.{self.name}",
                 entry_type="sample")
 
             self.journal.log_data_write(
-                experiment_name=experiment_name,
                 description="Low score generated data examples",
                 file_w_path=sample_fail_w_path_file,
                 component=f"agent.{self.name}",
                 entry_type="sample")
 
             self.journal.log_data_write(
-                experiment_name=experiment_name,
                 description="passing score generated data examples",
                 file_w_path=sample_good_w_path_file,
                 component=f"agent.{self.name}",
@@ -409,7 +406,6 @@ class GenerationAgent:
                 folder_mgr.dataset, f"{self.name}.generated.csv")
 
             self.journal.log_data_write(
-                experiment_name=experiment_name,
                 description="Synthetic data generated",
                 component=f"agent.{self.name}",
                 entry_type="created",
@@ -423,7 +419,6 @@ class GenerationAgent:
                 folder_mgr.dataset, f"{self.name}.str-generated.csv")
 
             self.journal.log_data_write(
-                experiment_name=experiment_name,
                 description="Synthetic data string representation",
                 component=f"agent.{self.name}",
                 entry_type="created",

@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path('..', 'src').resolve()))
 project = 'adgtk'
 copyright = '2024, Fred Diehl'
 author = 'Fred Diehl'
-release = '0.1.2a2'
+release = '0.1.2a3'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

@@ -268,6 +268,11 @@ class ObjectFactory:
 
         try:
             if "group_label" not in component_def:
+                print("--------------------")
+                print("COMPONENT DEFINITION")
+                print("--------------------")
+                print(component_def)
+                print("--------------------")
                 msg = "Invalid component definition, missing group_label"
                 raise KeyError(msg)
 

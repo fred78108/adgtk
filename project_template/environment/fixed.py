@@ -7,7 +7,7 @@ from adgtk.common import (
     ArgumentSetting,
     ArgumentType,
     ComponentDef)
-from adgtk.components import Action, State, StateType
+from adgtk.components import Action, State, StateType, ActionType
 from adgtk.factory import ObjectFactory
 from adgtk.journals import ExperimentJournal
 from reward import RewardFunction
@@ -24,6 +24,8 @@ class FixedDictEnvironment:
     up this state which is a dict and provide access to the reward
     """
 
+    uses_state_types: list[StateType] = [StateType.PRESENTABLE_RECORD]
+    supports_action_types: list[ActionType] = [ActionType.STRING]
     description = "Serves up a single dictionary as a state."
 
     blueprint: FactoryBlueprint = {

@@ -2,10 +2,14 @@
 Changelog
 =========
 
-Release 0.1.2a2
+Release 0.1.2a3
 ===============
 
-- moved the model module to the components package
+- minor code cleanup, improved readability
+- added adgtk.utils.file module
+- Improved journal reporting
+- Improved metric tracking
+- Bug fixes for preview tree building (UX)
 
 Prior releases
 ==============
@@ -16,3 +20,4 @@ Prior releases
     0.1.0a2
     0.1.1a1
     0.1.2a1
+    0.1.2a2

@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Roadmap &mdash; adgtk 0.1.2a2 documentation</title>
+  <title>Roadmap &mdash; adgtk 0.1.2a3 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=9de7f960"></script>
+      <script src="_static/documentation_options.js?v=399f7d79"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -54,6 +54,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changes/index.html">Changelog</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/index.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logging.html">Recording data</a></li>
 </ul>
 
         </div>
@@ -96,6 +97,10 @@
 <h2>Experiments<a class="headerlink" href="#experiments" title="Link to this heading"></a></h2>
 <p>The MVP release assumes a human interaction. For the target state the toolkit will provide at least one mechanism for an Agent to interact with the toolkit in order to create and run experiments.</p>
 <p>Envision how language models today can use a tool. This facility will provide the tool for your agent for experiment activities.</p>
+<ul class="simple">
+<li><p>add safety checks to prevent overwrite of results</p></li>
+<li><p>add purge of results via CLI (logs, results). Allow for extra dir via project.toml</p></li>
+</ul>
 </section>
 <section id="data-processing">
 <h2>Data processing<a class="headerlink" href="#data-processing" title="Link to this heading"></a></h2>

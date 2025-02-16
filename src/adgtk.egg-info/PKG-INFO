@@ -1,6 +1,6 @@
 Metadata-Version: 2.2
 Name: adgtk
-Version: 0.1.2a1
+Version: 0.1.2a3
 Summary: A framework for researching automation of synthetic data generation.
 Author-email: Frederick Diehl <fdiehl@ualr.edu>
 Project-URL: Homepage, https://github.com/fred78108/adgtk
@@ -19,7 +19,6 @@ Requires-Dist: PyYAML
 Requires-Dist: regex
 Requires-Dist: requests
 Requires-Dist: anytree
-Requires-Dist: pandas
 Requires-Dist: matplotlib
 Requires-Dist: prompt_toolkit
 
@@ -107,3 +106,7 @@ ADGTK is designed to be run from the command line. The primary command is `adgtk
       $ adgtk-mgr factory                   Lists available factory blueprints
       $ adgtk-mgr factory agent             Lists agent factory blueprints
 
+
+Known Issues
+============
+1. The working object when using the experiment builder does not always show the correct object. The experiment definition does though correctly build. The problem is with the UX only.

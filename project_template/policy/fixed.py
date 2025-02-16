@@ -62,6 +62,9 @@ class FixedGenerationPolicy:
         self.prompt_gen = self.factory.create(prompt_generator)
         self.prompt_gen = cast(PromptGenerator, self.prompt_gen)
         self.last_prompt = "not-set"
+        # for tracking
+        self.experiment_name: Union[str, None] = None
+        self.performance_tracker: Union[PerformanceTracker, None] = None
 
     def reset(self) -> None:
         """No action as this is a fixed policy."""

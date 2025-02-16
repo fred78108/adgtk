@@ -4,9 +4,10 @@ your own policy.
 """
 
 
-from typing import List, Protocol, runtime_checkable
+from typing import List, Protocol, runtime_checkable, Union
 from adgtk.common import FactoryBlueprint
 from adgtk.components import Action, State, StateType
+from adgtk.tracking import PerformanceTracker
 
 
 @runtime_checkable
@@ -15,6 +16,11 @@ class Policy(Protocol):
     blueprint: FactoryBlueprint
     training: bool
     supports_env_type: List[StateType]
+    
+    # for policy updates, tracking
+    experiment_name: Union[str, None] = None
+    performance_tracker: Union[PerformanceTracker, None] = None
+
 
     def reset(self) -> None:
         """Resets internal state during training."""

@@ -54,6 +54,7 @@ class ExperimentJournal:
         self._data_created: dict[str, list] = {}
         self._data_sample: dict[str, list] = {}
         self._data_other: dict[str, list] = {}
+        self._data_metrics: dict[str, list] = {}
         self._data_global: list[str] = []
         self._tools: list[str] = []
 
@@ -96,6 +97,7 @@ class ExperimentJournal:
         self._comments = []
         self._measurements = []
         self._data_created = {}
+        self._data_metrics = {}
         self._data_other = {}
         self._data_sample = {}
         self._data_global = []
@@ -232,6 +234,15 @@ class ExperimentJournal:
                     html += r"<li>"
                     html += entry
                     html += r"</li>"
+            # Metrics
+            if len(self._data_metrics[component]) > 0:
+                html += r"</ul><h4>Other</h4><ul>"
+                for entry in self._data_metrics[component]:
+                    html += r"<li>"
+                    html += entry
+                    html += r"</li>"
+            html += r"</ul></div>"
+        
             # Other
             if len(self._data_other[component]) > 0:
                 html += r"</ul><h4>Other</h4><ul>"
@@ -240,15 +251,14 @@ class ExperimentJournal:
                     html += entry
                     html += r"</li>"
             html += r"</ul></div>"
-
+        
         return html
 
     def log_data_write(
         self,
         description: str,
         file_w_path: str,
-        experiment_name: str,
-        entry_type: Literal["sample", "created", "other"],
+        entry_type: Literal["sample", "created", "other", "metrics"],
         component: Union[str, None] = None
     ) -> None:
         logging.info(f"data write: {description} {file_w_path}")
@@ -260,6 +270,8 @@ class ExperimentJournal:
                 self._data_created[component] = []
             if component not in self._data_other:
                 self._data_other[component] = []
+            if component not in self._data_metrics:
+                self._data_metrics[component] = []                
 
         # now log
         html = f"{description} "
@@ -275,6 +287,9 @@ class ExperimentJournal:
         elif entry_type == "created":
             if html not in self._data_created[component]:
                 self._data_created[component].append(html)
+        elif entry_type == "metrics":
+            if html not in self._data_metrics[component]:
+                self._data_metrics[component].append(html)
         elif entry_type == "other":
             if html not in self._data_other[component]:
                 self._data_other[component].append(html)

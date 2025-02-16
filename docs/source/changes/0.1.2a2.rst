@@ -1,0 +1,7 @@
+=============
+ADGTK 0.1.2a2
+=============
+
+Minor change. Moved model module to components package from the sample project.
+
+- moved the model module to the components package

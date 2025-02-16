@@ -18,7 +18,6 @@ from typing import (
 from numbers import Number
 import anytree
 
-
 # ----------------------------------------------------------------------
 # Common structures
 # ----------------------------------------------------------------------
@@ -323,12 +322,14 @@ def build_tree(
 ) -> None:
     """Uses Anytree to create a tree object for rendering. The function
     is designed to be recursive in order to be as flexible as possible.
+    The primary purpose is for ComponentDef but can also be used for
+    blueprints.
 
-    :param blueprint: The blueprint for the item
+    :param blueprint: The specification for the item
     :type blueprint: FactoryBlueprint
     :param parent: The parent
     :type parent: anytree.Node
-    """
+    """    
     if parent is None:
         parent = anytree.Node(blueprint["group_label"])
 
@@ -345,16 +346,14 @@ def build_tree(
         if isinstance(item, list):
             please_add = False
             list_node = anytree.Node(key, parent=item_node)
-            for entry in item:
-                if "arguments" in entry and "group_label" in entry \
-                        and "type_label" in entry:
-                    entry = cast(dict, entry)
+            for row in item:
+                if "arguments" in row and "group_label" in row and \
+                    "type_label" in row:                                    
+                    entry = cast(dict, row)
                     build_tree(blueprint=entry, parent=list_node)
                 else:
-                    for item_entry in entry:
-                        child_node = anytree.Node(item_entry, parent=list_node)
-                        anytree.Node(f"{key}:{item}", parent=item_node)
-
+                    anytree.Node(row, parent=list_node)
+        # 
         if please_add:
             if isinstance(item, str):
                 anytree.Node(f"{key}:{item}", parent=item_node)
@@ -363,8 +362,6 @@ def build_tree(
             elif isinstance(item, bool):
                 anytree.Node(f"{key}:{item}", parent=item_node)
             elif isinstance(item, dict):
-                anytree.Node(f"{key}:{item}", parent=item_node)
-            elif isinstance(item, list):
                 anytree.Node(f"{key}:{item}", parent=item_node)
             else:
                 # catching unexpected configuration items.

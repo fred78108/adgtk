@@ -4,6 +4,5 @@ PyYAML
 regex
 requests
 anytree
-pandas
 matplotlib
 prompt_toolkit
