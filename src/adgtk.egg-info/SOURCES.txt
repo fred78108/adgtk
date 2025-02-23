@@ -124,6 +124,7 @@ src/adgtk/experiment/NO_GIT_BUGS.md
 src/adgtk/experiment/__init__.py
 src/adgtk/experiment/builder.py
 src/adgtk/factory/__init__.py
+src/adgtk/factory/base.py
 src/adgtk/factory/component.py
 src/adgtk/factory/tool.py
 src/adgtk/impairment/__init__.py
