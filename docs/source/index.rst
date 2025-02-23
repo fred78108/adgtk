@@ -16,6 +16,8 @@ ADGTK - Agentic Data Generation Toolkit
 .. warning::
    This project is in the early stages of development. As this package is under active development the API and documentation are subject to change. Please check back often for updates.
 
+.. warning::
+   The API guide is not working correctly with readthedocs and module pages are blank. Until I can resolve please refer to the source code directly. This only impacts those that are dependent on the autodoc feature of sphinx.
 
 Introduction
 ============
@@ -112,3 +114,4 @@ When your not creating or destroying a project by default the toolkit will look 
 .. code-block:: console
 
       $ adgtk-mgr --file settings1.toml factory   
+
