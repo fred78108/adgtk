@@ -1,8 +1,9 @@
 """CLI utilities are intende to improve overall UX"""
 
 import logging
+import os
 import sys
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 from prompt_toolkit import prompt
 from prompt_toolkit.validation import Validator, ValidationError
 from prompt_toolkit.completion import WordCompleter
@@ -12,6 +13,7 @@ from prompt_toolkit.formatted_text import HTML
 # ----------------------------------------------------------------------
 # not intended for exposing via init, etc. module specific func
 # ----------------------------------------------------------------------
+
 
 
 # ---------------------- Validation ---------------------
@@ -190,7 +192,7 @@ def prompt_continuation(width, line_number, wrap_count):
 
 
 def get_user_input(
-    request: str,
+    user_prompt: str,
     requested: Literal["float", "str", "int", "bool", "ml-str"],
     configuring: Union[str, None] = None,
     helper: Union[str, None] = None,
@@ -200,7 +202,8 @@ def get_user_input(
     max_characters: Union[int, None] = None,
     min_characters: Union[int, None] = None,
     min_value: Union[int, None] = None,
-    max_value: Union[int, None] = None
+    max_value: Union[int, None] = None,
+    limit_ml_line_length:Optional[int] = None
 ) -> Union[str, int, float, bool]:
 
     # if default_selection is not None:
@@ -226,15 +229,22 @@ def get_user_input(
         validators.append(IntValidator())
     elif requested == "float":
         validators.append(FloatValidator())
+    elif requested == "bool":
+        # the list should match below
+        validators.append(ChoiceValidator(["True", "False"]))
 
     # multi-line is a bit different of an experience
     if requested == "ml-str":
         # multi-line entries are a bit different in how its handled.
+        print(user_prompt)
+        line = create_line(text=user_prompt, char="-")
+        if limit_ml_line_length is not None:
+            if len(line) > limit_ml_line_length:
+                line = create_line(text="-", modified=limit_ml_line_length)
+        print(line)
         print("Press [Esc] followed by [Enter] to complete input")
         print()
-        print(request)
-        line = create_line(text=request, char="-")
-        print(line)
+
 
         value = prompt(
             "input : ",
@@ -247,12 +257,12 @@ def get_user_input(
         return value
 
     # others
-    request += " : "
+    user_prompt += " : "
     if requested == "int":
         if default_selection is not None:
             value = int(
                 prompt(
-                    request,
+                    user_prompt,
                     default=str(default_selection),
                     bottom_toolbar=bottom_toolbar(
                         helper=helper,
@@ -262,7 +272,7 @@ def get_user_input(
         else:
             value = int(
                 prompt(
-                    request,
+                    user_prompt,
                     bottom_toolbar=bottom_toolbar(
                         helper=helper,
                         configuring=configuring,
@@ -272,7 +282,7 @@ def get_user_input(
         if default_selection is not None:
 
             value = float(prompt(
-                request,
+                user_prompt,
                 default=str(default_selection),
                 bottom_toolbar=bottom_toolbar(
                     helper=helper,
@@ -282,18 +292,47 @@ def get_user_input(
         else:
             value = float(
                 prompt(
-                    request,
+                    user_prompt,
                     bottom_toolbar=bottom_toolbar(
                         helper=helper,
                         configuring=configuring,
                         choices=choices),
                     validator=MultiValidator(validators)))
+    elif requested == "bool":
+        choices = ["True", "False"]
+        request_completer = WordCompleter(choices, ignore_case=True)
+
+        default_str = "False"
+        if default_selection is not None:
+            default_str = "True" if default_selection else "False"
+
+        value = prompt(
+            user_prompt,
+            default=default_str,
+            completer=request_completer,
+            complete_while_typing=True,
+            validator=MultiValidator(validators),
+            bottom_toolbar=bottom_toolbar(
+                helper=helper,
+                configuring=configuring,
+                choices=choices)
+        )
+
+        # Normalize input and convert to boolean
+        value = value.strip().lower()
+        if value == "true":
+            return True
+        elif value == "false":
+            return False
+        else:
+            raise ValueError("Invalid input for boolean. Expected 'True' or 'False'.")
+
     elif requested == "str":
         if default_selection is not None:
             if choices is not None:
                 request_completer = WordCompleter(choices, ignore_case=True)
                 value = prompt(
-                    request,
+                    user_prompt,
                     default=str(default_selection),
                     completer=request_completer,
                     complete_while_typing=True,
@@ -305,7 +344,7 @@ def get_user_input(
 
             else:
                 value = prompt(
-                    request,
+                    user_prompt,
                     default=str(default_selection),
                     validator=MultiValidator(validators),
                     complete_while_typing=True,
@@ -313,12 +352,11 @@ def get_user_input(
                         helper=helper,
                         configuring=configuring,
                         choices=choices))
-
         else:
             if choices is not None:
                 request_completer = WordCompleter(choices, ignore_case=True)
                 value = prompt(
-                    request,
+                    user_prompt,
                     completer=request_completer,
                     complete_while_typing=True,
                     validator=MultiValidator(validators),
@@ -328,7 +366,7 @@ def get_user_input(
                         choices=choices))
             else:
                 value = prompt(
-                    request,
+                    user_prompt,
                     validator=MultiValidator(validators),
                     complete_while_typing=True,
                     bottom_toolbar=bottom_toolbar(
@@ -350,13 +388,14 @@ def get_user_input(
                 logging.error(msg)
                 print(f"ERROR: {msg}. returning ``")
                 return ""
+
     return value
 
 
 def get_more_ask(configuring: Union[str, None] = None) -> bool:
     result = get_user_input(
         configuring=configuring,
-        request=f"Action [{configuring}] ",
+        user_prompt=f"Action [{configuring}] ",
         requested="str",
         choices=["done", "more"])
 

@@ -1,2 +1,3 @@
 [console_scripts]
-adgtk-mgr = adgtk.management.cli:manager
+adgtk-ds = adgtk.manager.ds_cli:main
+adgtk-mgr = adgtk.manager.cli:manager

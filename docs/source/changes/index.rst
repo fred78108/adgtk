@@ -2,14 +2,10 @@
 Changelog
 =========
 
-Release 0.1.2a3
+Release 0.2.0b1
 ===============
 
-- minor code cleanup, improved readability
-- added adgtk.utils.file module
-- Improved journal reporting
-- Improved metric tracking
-- Bug fixes for preview tree building (UX)
+- major re-write and simplification of the framework
 
 Prior releases
 ==============
@@ -21,3 +17,6 @@ Prior releases
     0.1.1a1
     0.1.2a1
     0.1.2a2
+    0.1.2a3
+    0.1.3
+    0.2.0b1

@@ -1,6 +1,6 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.4
 Name: adgtk
-Version: 0.1.2a3
+Version: 0.2.0b2
 Summary: A framework for researching automation of synthetic data generation.
 Author-email: Frederick Diehl <fdiehl@ualr.edu>
 Project-URL: Homepage, https://github.com/fred78108/adgtk
@@ -16,11 +16,16 @@ License-File: LICENSE
 Requires-Dist: toml
 Requires-Dist: jinja2
 Requires-Dist: PyYAML
+Requires-Dist: pandas
 Requires-Dist: regex
 Requires-Dist: requests
 Requires-Dist: anytree
 Requires-Dist: matplotlib
-Requires-Dist: prompt_toolkit
+Requires-Dist: numpy
+Requires-Dist: prompt-toolkit
+Requires-Dist: pydantic
+Requires-Dist: docstring-parser
+Dynamic: license-file
 
 ===============================
 Agentic Data Generation Toolkit

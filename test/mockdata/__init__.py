@@ -1,7 +1,7 @@
 """test_scenario_manager.py created"""
 from dataclasses import dataclass
 from typing import List
-from adgtk.common import FactoryImplementable
+# from adgtk.common import FactoryImplementable
 
 
 @dataclass

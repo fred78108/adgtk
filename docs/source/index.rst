@@ -2,7 +2,6 @@
 ADGTK - Agentic Data Generation Toolkit
 =======================================
 
-
 .. toctree::
    :maxdepth: 1
    
@@ -17,7 +16,8 @@ ADGTK - Agentic Data Generation Toolkit
    This project is in the early stages of development. As this package is under active development the API and documentation are subject to change. Please check back often for updates.
 
 .. warning::
-   The API guide is not working correctly with readthedocs and module pages are blank. Until I can resolve please refer to the source code directly. This only impacts those that are dependent on the autodoc feature of sphinx.
+   Version 0.2.0b1 is a beta release. Documentation updates are pending.
+
 
 Introduction
 ============
@@ -29,9 +29,8 @@ The goal is to provide an easy to modify or extend toolkit to support your resea
 Highlights
 ==========
 - A "lab journal" which can be invoked through an experiment.
-- Reports saved to disk of both preview and results of an experiment.
 - Extensible architecture. The framework is designed to be extensible on load and during execution.
-- Custom components can be created and used in your experiments. You are not constrained to the components that are provided.
+- Extensible architecture supports user defined objects via a common factory.
 
 
 Installation
@@ -72,46 +71,4 @@ Command structure
 
 ADGTK is designed to be run from the command line. The primary command is `adgtk-mgr`. This command is used to manage the toolkit. The command has a number of subcommands that are used to manage the toolkit.
 
-.. code-block:: console
-
-   adgtk-mgr [options]  
-
-   Commands:
-      project      : Project management (create, destroy)
-      experiment   : Experiment operations (create, run, list, preview)
-      factory      : List Factory or if include a group the group listing
-      
-   options:
-   -h, --help            show a help message and exits
-   -f FILE, --file FILE  override the settings file with this file
-   --version             show program's version number and exit
-   --yaml                Use YAML format when creating the project settings file
-
-   Project
-   -------
-      $ adgtk-mgr project create example1   Creates a new project called example1
-      $ adgtk-mgr project destroy example1  deletes the example1 project
-
-   Experiment
-   ----------
-      $ adgtk-mgr experiment list           lists all available experiments
-      $ adgtk-mgr experiment create         Starts a wizard to build an experiment
-      $ adgtk-mgr experiment create exp1     Starts a wizard to build an experiment with the name exp1
-      $ adgtk-mgr experiment run            via a menu select and run an experiment
-      $ adgtk-mgr experiment run exp1       Run exp1
-      $ adgtk-mgr experiment report         Starts a web server for reports
-
-   Factory
-   -------
-      $ adgtk-mgr factory                   Lists available factory blueprints
-      $ adgtk-mgr factory agent             Lists agent factory blueprints
-
-   
-
-
-When your not creating or destroying a project by default the toolkit will look for a file called `project.toml` in the current directory. This file is used to store the settings for the project. If you want to use a different file you can use the `--file` option to specify the file to use. For example, to use a file called `settings1.toml` you would use the following command:
-
-.. code-block:: console
-
-      $ adgtk-mgr --file settings1.toml factory   
-
+When your not creating or destroying a project by default the toolkit will look for a file called `bootstrap.py` in the current directory. This file is used to extend the adgtk framework with your code.

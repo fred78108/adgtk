@@ -1,11 +1,15 @@
 """Internal tracking. Provides useful data structures.
 """
-import logging
-import os
+
 import copy
-from typing import Union, Iterable
-from adgtk.utils import plot_single_line
-from adgtk.common.exceptions import InsufficientData
+import csv
+import os
+from typing import Iterable, Union
+import numpy as np
+from adgtk.data.structure import PurposeTypes
+import adgtk.tracking.journal as exp_journal
+from adgtk.utils import get_scenario_logger
+from .structure import ExperimentRunFolders
 # ----------------------------------------------------------------------
 # Constants
 # ----------------------------------------------------------------------
@@ -15,13 +19,19 @@ DEBUG_TO_CONSOLE = False
 # Tracking of data
 # ----------------------------------------------------------------------
 
-
 class MetricTracker():
     """Used for tracking metrics."""
 
-    def __init__(self):
-        self.metrics = {}
-        self.metadata = {}
+    def __init__(
+        self,
+        name:str="experiment",
+        purpose:PurposeTypes="other"
+    ):
+        self.name = name    # for saving to disk
+        self.purpose: PurposeTypes = purpose
+        self.metrics: dict[str, list] = {}
+        self.metadata: dict[str, dict] = {}
+        self.logger = get_scenario_logger()
 
     def register_metric(
         self,
@@ -71,7 +81,7 @@ class MetricTracker():
         :type Union[int, float]
         """
         if label not in self.metrics:
-            raise KeyError("Invalid metric")
+            self.metrics[label] = []
 
         self.metrics[label].append(value)
 
@@ -79,14 +89,12 @@ class MetricTracker():
             print(f"MetricTracker adding {value} to {label}")
             print(f"Updated Metrics: {self.metrics[label]}")
 
-    # TODO: Consider moving from bool to raise Exception when an
-    # entry exists. not needed for MVP.
     def metric_exists(self, label: str) -> bool:
         """Does a metric exist?
 
         :param label: The label of the metric
         :type label: str
-        :return: T T: exists, F: does not
+        :return: T: exists, F: does not
         :rtype: bool
         """
         if label not in self.metrics:
@@ -125,10 +133,28 @@ class MetricTracker():
         """
         if label not in self.metrics:
             msg = f"Requested invalid label: {label}"
-            logging.error(msg)
+            self.logger.error(msg)
             raise KeyError("Invalid metric")
         elif len(self.metrics[label]) == 0:
             return 0
+        else:
+            return self.metrics[label][-1]
+        
+    def get_latest_distribution(self, label: str) -> np.ndarray:
+        """Gets the latest distribution from a label
+
+        :param label: The label of the metric to get latest value
+        :type label: str
+        :raises KeyError: Invalid Metric
+        :return: the latest value
+        :rtype: np.ndarray
+        """
+        if label not in self.metrics:
+            msg = f"Requested invalid label: {label}"
+            self.logger.error(msg)
+            raise KeyError("Invalid metric")
+        elif len(self.metrics[label]) == 0:
+            return np.ndarray([])
         else:
             return self.metrics[label][-1]
 
@@ -142,11 +168,11 @@ class MetricTracker():
         :rtype: float
         """
         if label not in self.metrics:
+            msg = f"Requested invalid label: {label}" 
             if DEBUG_TO_CONSOLE:
                 print(f"METRIC_TRACKER_DATA: {self.metrics}")
-                msg = f"Requested invalid label: {label}"
                 print(msg)
-            logging.error(msg)
+            self.logger.error(msg)
             raise KeyError("Invalid metric")
         elif len(self.metrics[label]) == 0:
             return 0
@@ -164,7 +190,7 @@ class MetricTracker():
         """
         if label not in self.metrics:
             msg = f"Requested invalid label: {label}"
-            logging.error(msg)
+            self.logger.error(msg)
             raise KeyError("Invalid metric")
         elif len(self.metrics[label]) == 0:
             return 0
@@ -178,6 +204,12 @@ class MetricTracker():
         :type label: str
         """
         self.metrics[label] = []
+
+    def clear_results(self) -> None:
+        """Clears all prior measurement results
+        """
+        for key in self.metrics.keys():
+            self.metrics[key] = []
 
     def reset(self) -> None:
         """Deletes all data and labels and resets to no metrics tracked.
@@ -212,7 +244,7 @@ class MetricTracker():
             return copy.deepcopy(self.metrics[label])
 
         msg = f"Requested invalid label: {label}"
-        logging.error(msg)
+        self.logger.error(msg)
         raise KeyError("Invalid metric")
 
     def get_metadata(self, label: str) -> dict:
@@ -220,33 +252,54 @@ class MetricTracker():
             return copy.deepcopy(self.metadata[label])
 
         msg = f"Requested invalid metadata for label: {label}"
-        logging.error(msg)
+        self.logger.error(msg)
         return {}
 
-    # ------------------------ Plotting --------------------------------
+    def save_data(self, folders: ExperimentRunFolders) -> None:
+        """Saves the data to disk using the pre-defined folder structure
 
-    def line_plot(self, label: str, folder: str, file_prefix: str) -> str:
-        """MVP Line plot. Does a basic line plot using the data tracked.
-
-        :param label: The metric to plot
-        :type label: str
-        :param folder: The location to save the file
-        :type folder: str
-        :param file_prefix: The prefix of the filename. ex engine name
-        :type file_prefix: str
-        :return True if the file was created
-        :rtype bool
+        Args:
+            folders (ExperimentRunFolders): The results folders
         """
+        # prepare data
+        labels = self.metric_labels()
+        out_data = {}
+        for label in labels:
+            # always save all data
+            data = self.get_all_data(label)                
+            # now set the data, if exists
+            if len(data) > 0:
+                out_data[label] = data
+            else:
+                msg = f"{self.name} metric tracker had no data recorded "\
+                      f"for {label}"
+                self.logger.warning(msg)                
+                out_data[label] = []
 
-        file_w_path = os.path.join(folder, f"{file_prefix}.{label}.png")
-        data = self.get_all_data(label=label)
-        if len(data) > 0:
-            result = plot_single_line(
-                data=data,
-                filename=file_w_path,
-                title=label)
+        # write to disk        
+        for key, data in out_data.items():
+            filename = os.path.join(
+                        folders.metrics,
+                        f"{self.name}.{key}.csv")
 
-            if result:
-                return file_w_path
+            with open(filename, "w", newline="") as outfile:
+                writer = csv.writer(outfile)
+                writer.writerow(data)
 
-        raise InsufficientData
+            self.logger.info(
+                f"Saved {self.name}.{key} metric data to {filename}")
+
+            exp_journal.add_file(filename=filename, purpose=self.purpose)
+
+    def export_last_val_to_dict(self) -> dict:
+        """Obtains the latest measurement as a dictionary.
+
+        Returns:
+            dict: the last value recorded by metric label
+        """        
+        # prepare data
+        labels = self.metric_labels()
+        out_data = {}        
+        for label in labels:
+            out_data[label] = self.get_latest_value(label)
+        return out_data

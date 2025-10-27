@@ -21,6 +21,11 @@ Envision how language models today can use a tool. This facility will provide th
 - add safety checks to prevent overwrite of results
 - add purge of results via CLI (logs, results). Allow for extra dir via project.toml
 
+Tracking
+========
+Move the results.py to tracking and away from common module for Improved code maintenance. As the project is expanding it is a more logical place for the tracking module.
+
+
 Data processing
 ===============
 Although the user can create their own measurements using the FactoryBlueprint pattern their are some core components that are shared such as the Measurement Engine and Set. The current MVP release does not support filtering of data before measuring. The first feature will be therefore to introduce the ability to filter data. This filtering mechanism can then be used across the different components such as the Measurement Set or figures.

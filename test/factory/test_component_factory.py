@@ -1,235 +1,209 @@
-"""Testing the component factory
+# pyright: reportIncompatibleVariableOverride=false
+# pyright: reportArgumentType=false
+# pyright: reportFunctionMemberAccess=false
+
+"""test_component_factory.py Used for testing the factory
+for dynamic objects.
+
+Testing
+=======
+py -m pytest -s test/factory/test_component_factory.py
+
+Note: Initial test plan created by a model, modified and updated to
+meet my needs and addressed issues (created with errors, etc).
 """
-import logging
-import os
-import pytest
-import toml
-import test.mockdata.mock as mockdata
-from adgtk.common import (
-    DEFAULT_SETTINGS,
-    DuplicateFactoryRegistration,
-    InvalidBlueprint)
-from adgtk.journals import ExperimentJournal
-from adgtk.factory.component import uses_factory_on_init, uses_journal_on_init
-from adgtk.factory import ObjectFactory
+import pytest   # type: ignore
+from adgtk.factory import component
+from adgtk.factory.structure import (
+    BlueprintQuestion,
+    FactoryOrder,
+    SupportsFactory
+)
 
-# ----------------------------------------------------------------------
-#
-# ----------------------------------------------------------------------
-# py -m pytest -s test/factory/test_component_factory.py
+@pytest.fixture(autouse=True)
+def clear_factory_registry():
+    # Clear global state between tests for isolation
+    component._inventory.clear()
+    component._groups.clear()
 
+def dummy_creator(foo=None):
+    return {"foo": foo}
 
-# ----------------------------------------------------------------------
-# Module configuration
-# ----------------------------------------------------------------------
-DO_CLEANUP = True
-CLEAN_BEFORE_RUN = True
-
-
-# So we can surpress the intended exceptions/logging messages to
-# console
-logging.disable(logging.CRITICAL)
-
-
-# ----------------------------------------------------------------------
-# Fixtures
-# ----------------------------------------------------------------------
-@pytest.fixture(name="settings_file")
-def temp_settings_file(request):
-    with open(file="project.toml", encoding="utf-8", mode="w") as outfile:
-        output = toml.dumps(DEFAULT_SETTINGS)
-        outfile.write(output)
-
-    def teardown():
-        if os.path.exists("project.toml") and DO_CLEANUP:
-            os.remove("project.toml")
-
-    request.addfinalizer(teardown)
+class DummyFactoryClass(SupportsFactory):
+    factory_id: str = "dummy-factory-class"
+    group: str = "dummy-group"
+    tags: list[str] = ["test", "class"]
+    interview_blueprint: list[BlueprintQuestion] = [
+        BlueprintQuestion(
+            attribute="foo",
+            question="Enter foo",
+            entry_type="str"
+        )
+    ]
+    summary: str = "A dummy SupportsFactory class"
+    def __call__(self, foo=None):
+        return {"foo": foo}
 
 
-@pytest.fixture(name="loaded_factory")
-def loaded_factory_fixture(settings_file):
-    """Loads a factory with blueprints and components to create"""
-    journal = ExperimentJournal()
-    factory = ObjectFactory(journal=journal)
-    factory.register(
-        group_label_override="cat",
-        type_label_override="tabby",
-        creator=mockdata.TabbyCat)
+def test_factory_can_init_behavior():
+    class CanInitClass(SupportsFactory):
+        factory_id = "can-init"
+        group = "init-group"
+        tags = []
+        summary = "test"
+        interview_blueprint = []
+        factory_can_init = True
+        def __call__(self, **kwargs):
+            return kwargs
+        def __init__(self, foo:int) -> None:
+            self.foo = foo
+            super().__init__()
 
-    factory.register(
-        group_label_override="pet",
-        type_label_override="home",
-        creator=mockdata.PetHome)
-
-    factory.register(
-        group_label_override="scenario",
-        type_label_override="one",
-        creator=mockdata.MockScenario)
-
-    return factory
-
-# ----------------------------------------------------------------------
-# Samples
-# ----------------------------------------------------------------------
+    fid = component.register(CanInitClass)
+    entry = component._inventory[fid]
+    assert entry.factory_can_init is True
+    result = component.create(fid, foo=42)    
+    assert result.foo == 42
 
 
-class UsesFactory:
-
-    def __init__(self, factory: ObjectFactory, journal: ExperimentJournal):
-        pass
-
-    def hello():
-        pass
+def test_factory_id_int_like_string_raises():
+    with pytest.raises(ValueError):
+        component.register(dummy_creator, group="g", factory_id="42")
 
 
-class NotUsingFactory:
-    def __init__(self, name: str):
-        pass
-
-    def hello():
-        pass
+def test_get_callable_returns_creator():
+    fid = component.register(dummy_creator, group="callable-test")
+    creator = component.get_callable(fid)
+    assert creator is dummy_creator
 
 
-# ----------------------------------------------------------------------
-# Testing
-# ----------------------------------------------------------------------
+def test_entry_and_group_exists():
+    fid = component.register(dummy_creator, group="exists-group")
+    assert component.entry_exists(fid)
+    assert component.group_exists("exists-group")
+    component.remove(fid)
+    assert not component.entry_exists(fid)
 
 
-# ----------- helper functions -----------
-def test_uses_factory_on_init_true():
-    result = uses_factory_on_init(UsesFactory)
-    assert result
+def test_get_group_names_contains_registered_group():
+    group_name = "gnames"
+    component.register(dummy_creator, group=group_name)
+    assert group_name in component.get_group_names()
+
+def test_register_basic_callable():
+    fid = component.register(dummy_creator, group="dummies", tags=["alpha"], summary="basic test")
+    assert fid in component._inventory
+    entry = component._inventory[fid]
+    assert entry.group == "dummies"
+    assert "alpha" in entry.tags
+    assert entry.summary == "basic test"
+
+def test_register_supports_factory():
+    fid = component.register(
+        item=DummyFactoryClass, tags=["extra"],
+        group="override-group")
+    assert fid in component._inventory
+    entry = component._inventory[fid]
+    assert "test" in entry.tags
+    assert "class" in entry.tags
+    assert "extra" in entry.tags
+    assert entry.summary == DummyFactoryClass.summary
+    assert entry.group == "override-group"
+    assert entry.interview_blueprint == DummyFactoryClass.interview_blueprint
+
+def test_register_duplicate_id_raises():
+    fid = component.register(dummy_creator, group="dups", factory_id="myid")
+    with pytest.raises(IndexError):
+        component.register(dummy_creator, group="dups", factory_id="myid")
+
+def test_register_non_callable_raises():
+    with pytest.raises(ValueError):
+        component.register(item=1234, group="dups")
+
+def test_register_missing_group_raises():
+    with pytest.raises(ValueError):
+        component.register(dummy_creator)
+
+def test_callable_success():
+    fid = component.register(dummy_creator, group="fact", summary="dummy")
+    obj = component.get_callable(fid)
+    assert obj is dummy_creator
 
 
-def test_uses_factory_on_init_false():
-    result = uses_factory_on_init(NotUsingFactory)
-    assert not result
+def test_create_unknown_id_raises():
+    with pytest.raises(KeyError):
+        component.create("not-exist", foo=0)
 
+def test_create_using_order_success():
+    class OrderFactoryClass(SupportsFactory):
+        factory_id = "order-factory"
+        group = "order-group"
+        tags = []
+        summary = "order test"
+        interview_blueprint = []
+        factory_can_init = True
+        def __init__(self, foo=None):
+            self.foo = foo
 
-def test_uses_journal_on_init_true():
-    result = uses_journal_on_init(UsesFactory)
-    assert result
+    fid = component.register(OrderFactoryClass)
+    order = FactoryOrder(factory_id=fid, init_args={"foo": "bar"})
+    obj = component.create_using_order(order)
+    assert isinstance(obj, OrderFactoryClass)
+    assert obj.foo == "bar"
 
+def test_create_using_order_invalid_raises():
+    with pytest.raises(Exception):
+        component.create_using_order(123)
 
-def test_uses_journal_on_init_false():
-    result = uses_journal_on_init(NotUsingFactory)
-    assert not result
-
-# ----------- Factory -----------
-
-
-def test_create_factory(settings_file):
-    """Validates the Factory is created. Basic smoke test!"""
-    journal = ExperimentJournal()
-    factory = ObjectFactory(journal=journal)
-
-    assert isinstance(factory, ObjectFactory)
-
-
-def test_register(settings_file):
-    """Tests the registering of a type"""
-    # setup
-    journal = ExperimentJournal()
-    factory = ObjectFactory(journal=journal)
-
-    # exercise
-    factory.register(
-        group_label_override="cat", type_label_override="tabby", creator=mockdata.TabbyCat)
-
-    cats = factory.registry_listing("cat")
-    assert len(cats) == 1
-
-
-def test_unregister(settings_file):
-    """Tests the unregistering of a type"""
-    # setup
-    journal = ExperimentJournal()
-    factory = ObjectFactory(journal=journal)
-
-    factory.register(
-        group_label_override="cat", type_label_override="tabby", creator=mockdata.TabbyCat)
-    factory.register(
-        group_label_override="cat", type_label_override="stray", creator=mockdata.DummyClass)
-    cats = factory.registry_listing("cat")
-    assert len(cats) == 2
-    # exercise
-    factory.unregister("cat", type_label="tabby")
-    cats = factory.registry_listing("cat")
-    assert len(cats) == 1
-
-
-def test_create_type(settings_file):
-    """Tests the creation of a type"""
-    # setup
-    journal = ExperimentJournal()
-    factory = ObjectFactory(journal=journal)
-
-    factory.register(
-        group_label_override="cat", type_label_override="tabby", creator=mockdata.TabbyCat)
-
-    # exercise
-    cat = factory.create({
-        "group_label": "cat",
-        "type_label": "tabby",
-        'arguments': {"count": 2}
-    })
-
-    assert cat.count == 2
-
-
-def test_create_type_and_group(settings_file):
-    """Testing the ability to create both group and type as needed"""
-    journal = ExperimentJournal()
-    factory = ObjectFactory(journal=journal)
-
-    factory.register(
-        group_label_override="cat", type_label_override="tabby", creator=mockdata.TabbyCat)
-
-    cats = factory.registry_listing("cat")
-    assert len(cats) == 1
-
-
-def test_type_raises(loaded_factory):
-    """Tests exception handling"""
-    with pytest.raises(DuplicateFactoryRegistration):
-        loaded_factory.register(
-            group_label_override="cat",
-            type_label_override="tabby",
-            creator=mockdata.DummyClass)
-
-
-def test_nested_build(loaded_factory):
-    """Tests that passing the factory works as expected."""
-    scenario = loaded_factory.create(mockdata.MOCK_SCENARIO_DEF_ONE)
-    assert scenario.pet.count == 6
-
-
-def test_build_raises(loaded_factory):
-    """Tests that an invalid configuration is raised."""
-    with pytest.raises(InvalidBlueprint):
-        loaded_factory.create(mockdata.MOCK_SCENARIO_DEF_ONE_BAD)
-
-
-def test_presentation_generation(loaded_factory):
-    """Tests that a factory returns the correct type"""
-    loaded_factory.register(
-        group_label_override="presentation",
-        type_label_override="fixed",
-        creator=mockdata.FixedPresentationFormat
+def test_get_interview_success():
+    fid = component.register(
+        dummy_creator,
+        group="interview",
+        interview_blueprint=[BlueprintQuestion(
+            attribute="foo",
+            question="Your foo?",
+            entry_type="str"
+        )]
     )
-    pres = loaded_factory.create({
-        "group_label": "presentation",
-        "type_label": "fixed",
-        "arguments": {}
-    })
-    result = pres.present(data={})
-    assert result == mockdata.STATIC_STRING_ONE
+    interview = component.get_interview(fid)
+    assert isinstance(interview, list)
+    assert interview[0].attribute == "foo"
+    assert interview[0].question == "Your foo?"
 
+def test_get_interview_unknown_raises():
+    with pytest.raises(KeyError):
+        component.get_interview("does-not-exist")
 
-def test_get_blueprint(loaded_factory):
-    """Tests the retrival of a blueprint"""
-    result = loaded_factory.get_blueprint(
-        group_label="cat",
-        type_label="tabby")
-    assert result == mockdata.TabbyCat.blueprint
+def test_remove_success():
+    fid = component.register(dummy_creator, group="rm", summary="to remove")
+    component.remove(fid)
+    assert fid not in component._inventory
+
+def test_remove_unknown_raises():
+    with pytest.raises(KeyError):
+        component.remove("unknown-id")
+
+def test_list_entries_all():
+    id1 = component.register(dummy_creator, group="x", tags=["t1"], summary="s1")
+    id2 = component.register(dummy_creator, group="y", tags=["t2"], summary="s2")
+    all_entries = component.list_entries()
+    found_ids = [e.factory_id for e in all_entries]
+    assert id1 in found_ids and id2 in found_ids
+
+def test_list_entries_group_and_tags():
+    component.register(dummy_creator, group="g", tags=["a", "b"], summary="one")
+    component.register(dummy_creator, group="g", tags=["a"], summary="two")
+    results = component.list_entries(tags=["a"], group="g")
+    assert len(results) == 2
+    results = component.list_entries(tags=["b"], group="g")
+    assert len(results) == 1
+
+def test_report_output(capsys):
+    component.register(dummy_creator, group="g", tags=["x"], summary="rpt1")
+    component.register(dummy_creator, group="g", tags=["y"], summary="rpt2")
+    component.report(group="g")
+    captured = capsys.readouterr()
+    assert "Factory report" in captured.out
+    assert "g".upper() in captured.out
+    assert "rpt1" in captured.out
+    assert "rpt2" in captured.out

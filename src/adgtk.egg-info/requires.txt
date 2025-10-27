@@ -1,8 +1,12 @@
 toml
 jinja2
 PyYAML
+pandas
 regex
 requests
 anytree
 matplotlib
-prompt_toolkit
+numpy
+prompt-toolkit
+pydantic
+docstring-parser

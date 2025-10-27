@@ -1,427 +1,475 @@
-"""Component Factory is focused on registering, tracking, and creating
-instances of user and system defined components. The factory is designed
-to be updated at runtime and is used to create components for running
-experiments.
-"""
+"""component.py is the new factory design introduced with the v0.2.0
+re-write. The goal of this re-write is to greatly simplify the amount of
+boilerplate code needed by grounding the design with pydantic + Protocol
 
-from __future__ import annotations
-import logging
+This is intended to be non-persistent so each run will need to handle
+their own assembly.
+
+Goals
+=====
+A dynamic factory for both internal and user defined objects.
+
+Testing
+=======
+py -m pytest -s test/factory/test_component_factory.py
+
+Notes
+=====
+1. MVP design.
+2. Goal remains the ability to intermix both framework provided with the
+   user provided entries.
+3. No persistent storage. The factory is loaded via the CLI by the
+   bootstrap.py file. The design has the user update their bootstrap
+   file.
+4. When to log. when a raise is about communication, no log, else log
+
+Roadmap
+=======
+1. Consider internal_only objects that are hidden from reports as well
+   as denied the ability to register if outside of this project. i.e. a
+   user cannot register additional internal-only objects group.
+2. Consider an experiment definition override to another bootstrap file.
+3. on the report, between sections increase the line length to match.
+
+Defects
+=======
+1.
+"""
 import os
 import sys
+# before importing others
+# ----------------------------------------------------------------------
+# Start of path verification
+# ----------------------------------------------------------------------
+path = os.getcwd()
+bootstrap_file = os.path.join(path, "bootstrap.py")
+if not os.path.exists(bootstrap_file):
+    print("ERROR: Unable to locate the bootstrap.py. Please check your path.")
+    sys.exit(1)
+# ----------------------------------------------------------------------
+# End of path verification
+# ----------------------------------------------------------------------
+
+from adgtk.factory.structure import (
+    BlueprintQuestion,
+    SupportsFactory,
+    FactoryEntry,
+    FactoryOrder
+)
+from pydantic import ValidationError
+from typing import (
+    cast,
+    Callable,
+    Optional,
+    Type,
+    Union)
+import secrets
 import inspect
-import toml
-import yaml
-from typing import Any, Union, List, TYPE_CHECKING
-from adgtk.journals import ExperimentJournal
-from adgtk.common import (
-    DuplicateFactoryRegistration,
-    FactoryImplementable,
-    FactoryBlueprint,
-    ComponentDef,
-    InvalidScenarioState, 
-    FolderManager)
+import copy
 
-from adgtk.utils import create_line, load_settings
+# setup logfile for this and sub-modules
+from adgtk.utils import create_logger
 
-# py -m pytest -s test/factory/test_component_factory.py
+# Set up module-specific logger
+_logger = create_logger(
+    "adgtk.factory.log",
+    logger_name=__name__,
+    subdir="framework"
+)
+
 
 # ----------------------------------------------------------------------
-# Module Options
+# Globals
 # ----------------------------------------------------------------------
-# used for development and troubleshooting.
-LOG_FACTORY_CREATE = True
 
-def uses_factory_on_init(component: FactoryImplementable) -> bool:
-    """Checks if a component uses the factory on init
+_inventory: dict[str, FactoryEntry] = {}  # all constructors
+_groups: list[str] = []                   # only grows, consider dict[str,int]
 
-    :param component: The component to inspect
-    :type component: FactoryImplementable
-    :return: T: Uses factory on init, F: Does not use factory on init
-    :rtype: bool
+
+# ----------------------------------------------------------------------
+# Decorator
+# ----------------------------------------------------------------------
+def register_to_factory(cls):
+    """A decorator for registration to the factory"""
+    if issubclass(cls, SupportsFactory):
+        register(
+            item=cls,
+            group=cls.group,
+            tags=cls.tags,
+            factory_id=cls.factory_id,
+            summary=cls.summary,
+            interview_blueprint=cls.interview_blueprint,
+            factory_can_init=cls.factory_can_init
+        )
+        return cls
+
+    raise ValueError(
+        "This decorator supports children of SupportsFactory class")
+
+# ----------------------------------------------------------------------
+# Public
+# ----------------------------------------------------------------------
+
+
+def register(
+    item: Union[Callable, SupportsFactory],
+    group: Optional[str] = None,
+    tags: Optional[list] = None,
+    factory_id: Optional[str] = None,
+    summary: str = "No summary recorded",
+    interview_blueprint: Optional[list[BlueprintQuestion]] = None,
+    factory_can_init: Optional[bool] = None
+) -> str:
+    """Registers an item into the factory.
+
+    :param item: The callable item
+    :type item: Union[Callable, SupportsFactory]
+    :param group: the group name if not SupportsFactory. Required if
+        item is not SupportsFactory. If SupportsFactory it overrides
+        the item value for the group. defaults to None
+    :type group: Optional[str], optional
+    :param tags: tags for searching the factory, defaults to None
+    :type tags: Optional[list], optional
+    :param factory_id: The id for the factory, defaults to None
+    :type factory_id: Optional[str], optional
+    :param summary: The summary for listings, defaults to "No summary recorded"
+    :type summary: str, optional
+    :param interview_blueprint: The questions to ask for experiment
+        definitions, defaults to None
+    :type interview_blueprint: Optional[list[BlueprintQuestion]], optional
+    :raises ValueError: Invalid request, failure to process, etc    
+    :raises IndexError: Entry already exists
+    :return: The factory id now entered into the factory
+    :rtype: str
     """
-    if inspect.isclass(component):
-        args = inspect.signature(component).parameters
-        if "factory" in args:
-            return True
-    return False
+    global _inventory, _groups
+
+    # set the factory_can_init
+    if factory_can_init is None:
+        # If not set then check, if not SupportsFactory then false
+        factory_can_init = False
+        if inspect.isclass(item) and issubclass(item, SupportsFactory):
+            factory_can_init = item.factory_can_init
+
+    if not callable(item):
+        raise ValueError("Invalid item. It must be callable.")
+
+    # shorter than UUID.
+    factory_id = factory_id or getattr(
+        item, "factory_id", f"tmp.{secrets.token_hex(4)}")
+
+    if factory_id is None:
+        msg = "Failed to create factory_id"
+        _logger.error(msg)
+        raise ValueError(msg)
+
+    # verify formatting
+    if isinstance(factory_id, int):
+        msg = "Invalid factory_id. Must not be able to convert to int"
+        _logger.info(msg)
+        raise ValueError(msg)
+    try:
+        _ = int(factory_id)
+    except ValueError:
+        pass
+    else:
+        msg = (f"Invalid factory_id {factory_id}. Must not be able "
+               "to convert to int")
+        _logger.info(msg)
+        raise ValueError(msg)
+
+        pass
+    if factory_id in _inventory:
+        raise IndexError(f"factory_id: {factory_id} already exists")
+
+    if (inspect.isclass(item) and issubclass(item, SupportsFactory)):
+        if summary == "No summary recorded":
+            summary = item.summary
+
+        group = group or item.group
+        tags = (tags or []) + item.tags
+        interview_blueprint = item.interview_blueprint
+    else:
+        if group is None:
+            raise ValueError("Group required if not using SupportsFactory.")
+        tags = tags or []
+        if interview_blueprint is None:
+            interview_blueprint = []
+
+    entry = FactoryEntry(
+        factory_id=factory_id,
+        factory_can_init=factory_can_init,
+        creator=item,
+        group=group,
+        tags=tags,
+        interview_blueprint=interview_blueprint,
+        summary=summary
+    )
+
+    if group not in _groups:
+        _groups.append(group)
+    if entry.factory_id is None:
+        raise ValueError("entry construction error. missing factory_id")
+
+    _inventory[entry.factory_id] = entry
+    msg = f"Registered factory_id: {factory_id}"
+    _logger.info(msg)
+    return entry.factory_id
 
 
-def uses_journal_on_init(component: FactoryImplementable) -> bool:
-    """Checks if a component uses the journal on init
+def create_using_order(order: FactoryOrder) -> SupportsFactory:
+    """Creates an object using a FactoryOrder. This provides an easier
+    interface for Scenario loading, etc. This does not work for fetching
+    a callable.
 
-    :param component: The component to inspect
-    :type component: FactoryImplementable
-    :return: T: Uses journal on init, F: Does not use journal on init
-    :rtype: bool
+    :param order: The order to process
+    :type order: FactoryOrder
+    :return: The resulting object with the values set in the init_args
+    :rtype: T
     """
-    if inspect.isclass(component):
-        args = inspect.signature(component).parameters
-        if "journal" in args:
-            return True
-    return False
-
-
-# ----------------------------------------------------------------------
-# Factory
-# ----------------------------------------------------------------------
-
-
-class ObjectFactory:
-    """A dynamic factory that creates and manages groups and types"""
-
-    def __init__(
-        self,
-        journal: ExperimentJournal,
-        factory_name: str = "Object Factory",
-        settings_file_override: Union[str, None] = None
-    ) -> None:
-        self.factory_name = factory_name
-        # A common place to establish the folder manager
-        # should be set before creation. So it is set at experiment run.
-        # this way an Agent if designed can run different experiments
-        # in parallel or series.
-        self.settings_file_override = settings_file_override
-        self.folder_manager: FolderManager
-
-        self._journal = journal
-
-        self._registry: dict[str, dict[str, FactoryImplementable]] = {}
-        self.registered_count = 0
-
-        self.settings = load_settings()
-        # formatting
-        self.file_format = self.settings.default_file_format
-
-    def __len__(self) -> int:
-        return self.registered_count
-
-    def update_folder_manager(self, name: str) -> None:
-        self.folder_manager = FolderManager(
-            name=name,
-            settings_file_override=self.settings_file_override)
-
-    def __str__(self) -> str:
-        title = "Object Factory report"
-        report = ""
-        report += f"{title}\n"
-        report += "---------------------\n"
-        for key, group in sorted(self._registry.items()):
-            report += f"Group-label: {key}\n"
-            for item, _ in sorted(group.items()):
-                report += f"  - type: {item}\n"
-
-        return report
-
-    def group_report(self, group_label: str) -> str:
-        """Creates a report string for a group. Primary use is in the
-        command line interface.
-
-        :param group_label: The group to filter on
-        :type group_label: str
-        :return: a report showing the group members
-        :rtype: str
-        """
-
-        title = f"Object Factory report for group1: {group_label}"
-
-        line = create_line(title, "=")
-        report = title
-        report += f"\n{line}\n"
-        if group_label not in self._registry:
-            report = f"ERROR: No group {group_label} found\n\n"
-            report += "Valid groups are:\n"
-            report += create_line("", char=".", modified=17)
-            report += "\n"
-            for key in self._registry.keys():
-                report += f"  - {key}\n"
-            return report
-
-        for item, _ in sorted(self._registry[group_label].items()):
-            report += f"  - {item:<17}  | "
-            desc = self.get_description(
-                group_label=group_label, type_label=item)
-            report += f"{desc}\n"
-
-        return report
-
-    def get_description(self, group_label: str, type_label: str) -> str:
-        """Gets the description of a component that is registed.
-
-        :param group_label: The group the component is a member of
-        :type group_label: str
-        :param type_label: the member in the group
-        :type type_label: str
-        :return: a string of the description as defined in the class.
-        :rtype: str
-        """
+    if not isinstance(order, FactoryOrder):
         try:
-            return self._registry[group_label][type_label].description
-        except IndexError:
-            return "ERROR. group:type not found"
-        except AttributeError:
-            # ideally should not happen but if it does keep going!
-            return "description not set"
+            order = FactoryOrder(**order)
+        except ValidationError as e:
+            _logger.error("Invalid order submitted")
+            raise
 
-    def register(
-        self,
-        creator: Any,
-        group_label_override: Union[str, None] = None,
-        type_label_override: Union[str, None] = None,
-        log_entry: bool = True
-    ) -> None:
-        """Register an object.
+    if order.init_args is None:
+        return create(factory_id=order.factory_id)
 
-        Args:
-        :param group_label_overide: The group to which it belongs
-        :type group_label_overide: str
-        :param type_label_overide: the type within that group
-        :type type_label_overide: str
-        :param creator: The class to create
-        :type creator: Any (implements Protocol FactoryImplementable)
-        :raises DuplicateFactoryRegistration: The type label exists
-        :raises TypeError: creator does not implement protocol
-        """
-
-        group_label: str = creator.blueprint["group_label"]
-        type_label: str = creator.blueprint["type_label"]
-
-        if group_label_override is not None:
-            group_label = group_label_override
-        if type_label_override is not None:
-            type_label = type_label_override
-
-        # Safety check
-        if not isinstance(creator, FactoryImplementable):
-            msg = f"Creator {creator} does not Implement FactoryImplementable"
-
-            raise TypeError(msg)
-        if group_label not in self._registry:
-            self._registry[group_label] = {}
-
-        # get groups
-        c_group = self._registry[group_label]
-
-        # and add to groups
-        if type_label in c_group:
-            raise DuplicateFactoryRegistration
-
-        c_group[type_label] = creator
+    init_args = order.init_args
+    created = create(factory_id=order.factory_id, **init_args)
+    return created
 
 
-        self.registered_count += 1
+def create(factory_id: str, **kwargs) -> SupportsFactory:
+    """Creates an instance of the item
 
-    def unregister(self, group_label: str, type_label: str) -> None:
-        """Unregisters a type from a group
+    :param factory_id: The id to create
+    :type factory_id: str
+    :raises KeyError: Unable to find in the factory
+    :return: An instance of the factory item
+    :rtype: T
+    """
+    global _inventory
 
-        :param group_label: The group to which it belongs
-        :type group_label: str
-        :param type_label: the type within that group
-        :type type_label: str
-        :raises KeyError: Group label not found
-        """
-        if group_label in self._registry:
-            c_group = self._registry[group_label]
-            if type_label in c_group:
-                c_group.pop(type_label, None)
-        else:
-            raise KeyError("Group label not found")
+    if factory_id not in _inventory:
+        msg = f"{factory_id} not in factory"
+        _logger.error(msg)
+        raise KeyError(msg)
 
-        self.registered_count -= 1
+    item = _inventory[factory_id]
+    creator = item.creator
+    if item.factory_can_init:
+        created = creator(**kwargs)
+        return created
 
-    def get_blueprint(
-        self,
-        group_label: str,
-        type_label: str
-    ) -> FactoryBlueprint:
-        """Gets a blueprint for a component creator
+    msg = (f"Attempted to init factory_id: {item.factory_id} that does "
+           "not support init.")
+    _logger.error(msg)
+    raise ValueError(msg)
 
-        :param group_label: the group label
-        :type group_label: str
-        :param type_label: The type label
-        :type type_label: str
-        :raises KeyError: Group not found
-        :raises KeyError: Type not found
-        :return: The component blueprint
-        :rtype: FactoryBlueprint
-        """
 
-        if group_label in self._registry:
-            c_group = self._registry[group_label]
-        else:
-            raise KeyError("Group label not found")
+def get_interview(factory_id: str) -> list[BlueprintQuestion]:
+    """Provides an interview for a factory item based on the
+    data provided at registration
 
-        if type_label in c_group:
-            component = c_group[type_label]
-            return component.blueprint
+    :param factory_id: The id to obtain the interview for
+    :type factory_id: str
+    :raises KeyError: Unable to find the id in the factory
+    :return: The interview
+    :rtype: list[BlueprintQuestion]
+    """
+    if factory_id not in _inventory:
+        msg = f"{factory_id} not in factory"
+        _logger.error(msg)
+        raise KeyError(msg)
 
-        raise KeyError("Type label not found")
+    item = _inventory[factory_id]
+    return item.interview_blueprint
 
-    def create(self, component_def: ComponentDef) -> Any:
-        """creates a component based on a blueprint
 
-        :param component_def: The item to build
-        :type component_def: ComponentDef
-        :raises KeyError: unable to find the object
-        :return: A created object using the blueprint
-        :rtype: Any
-        """
+def get_callable(factory_id: str) -> Callable:
+    """Returns a callable. It does not attempt to initialize.
 
-        try:
-            if "group_label" not in component_def:
-                print("--------------------")
-                print("COMPONENT DEFINITION")
-                print("--------------------")
-                print(component_def)
-                print("--------------------")
-                msg = "Invalid component definition, missing group_label"
-                raise KeyError(msg)
+    :param factory_id: The id of the item to fetch
+    :type factory_id: str
+    :raises KeyError: Unable to find the factory id
+    :return: a callable object, ex function. does not invoke
+    :rtype: Callable
+    """
+    global _inventory
 
-            if "type_label" not in component_def:
-                msg = "Invalid component definition, missing group_label"
-                raise KeyError(msg)
+    if factory_id not in _inventory:
+        msg = f"{factory_id} not in factory"
+        _logger.error(msg)
+        raise KeyError(msg)
 
-            if component_def["group_label"] not in self._registry:
-                msg = f'{component_def["group_label"]} not in factory. '\
-                      "Unable to create"
-                logging.error(msg)
-                print(msg)
-                sys.exit(1)
-            g_label = component_def["group_label"]
-            t_label = component_def["type_label"]
-            # get the component_create
-            component_create = self._registry[g_label][t_label]
-        except KeyError as e:
-            msg = "No valid creator found at: "\
-                  f"{component_def['group_label']}:{component_def['type_label']}"
-            logging.error(e)
-            raise KeyError(e) from e
+    entry = _inventory[factory_id]
+    return entry.creator
 
-        # do we init w/factory & journal, factory only, or none?
-        factory_flag = uses_factory_on_init(component_create)
-        j_flag = uses_journal_on_init(component_create)
 
-        if factory_flag and j_flag:
-            if LOG_FACTORY_CREATE:
-                g_label = component_def["group_label"]
-                t_label = component_def["type_label"]
-                msg = f"creating {g_label}:{t_label} with Journal and Factory"
-                logging.info(msg)
+def remove(factory_id: str) -> None:
+    """Removes an item from the factory
+
+    :param factory_id: The id of the item to remove
+    :type factory_id: str
+    :raises KeyError: Unable to locate id
+    """
+
+    global _inventory
+
+    if not factory_id in _inventory.keys():
+        msg = f"{factory_id} not in factory"
+        _logger.error(msg)
+        raise KeyError(msg)
+
+    # TODO: in the future, consider removing from _groups
+    del _inventory[factory_id]
+
+
+def list_entries(
+    tags: Optional[Union[str, list[str]]] = None,
+    group: Optional[str] = None
+) -> list:
+    """Lists the entries within the factory
+
+    :param tags: Filter on tag(s), defaults to None
+    :type tags: Optional[Union[str, list[str]]], optional
+    :param group: Filter on a group, defaults to None
+    :type group: Optional[str], optional
+    :raises ValueError: Corruption of the inventory
+    :return: A list of entries that match the search
+    :rtype: list
+    """
+    global _inventory
+
+    found: list[FactoryEntry] = []
+    entry: FactoryEntry
+
+    # cleanup input
+    if isinstance(tags, str) and len(tags) > 0:
+        tags = [tags]
+
+    # this should always return true but just in case:
+    if isinstance(tags, list):
+        # cleanup any white-space
+        tags = [x.strip() for x in tags]
+
+        # and if all that is left is an empty string
+        for tag in tags:
+            if tag == "":
+                tags.remove("")
+
+    for _, entry in sorted(_inventory.items(), key=lambda x: x[0]):
+        if not isinstance(entry, FactoryEntry):
             try:
-                if inspect.isclass(component_create):
-                    new_component = component_create(
-                        factory=self,
-                        journal=self._journal,
-                        **component_def["arguments"])
-                else:
-                    msg = f"invalid type in factory for {g_label}|{t_label}"
-                    logging.error(msg)
-                    raise InvalidScenarioState(msg)
-            except TypeError as e:
-                msg = f"Invalid settings for {g_label}|{t_label}. "\
-                    "Unable to create using the factory. See log for "\
-                    "more details."
-                logging.error(msg)
-                logging.error(e)
-                raise TypeError(msg) from e
+                entry = FactoryEntry(**entry)
+            except ValidationError:
+                msg = "The Inventory appears to be corrupted"
+                _logger.error(msg)
+                raise ValueError(msg)
 
-            return new_component
+        if tags is None:
+            if group is None:
+                found.append(entry)
+            elif group.lower() == entry.group.lower():
+                found.append(entry)
+        elif all(entry_tag in entry.tags for entry_tag in tags):
+            if group is None:
+                found.append(entry)
+            elif group == entry.group:
+                found.append(entry)
+    return found
 
-        elif factory_flag:
-            if LOG_FACTORY_CREATE:
-                g_label = component_def["group_label"]
-                t_label = component_def["type_label"]
-                msg = f"creating {g_label}:{t_label} with Factory, no Journal"
-                logging.info(msg)
-            try:
-                if inspect.isclass(component_create):
-                    new_component = component_create(
-                        factory=self,
-                        **component_def["arguments"])
-                else:
-                    msg = f"invalid type in factory for {g_label}|{t_label}"
-                    logging.error(msg)
-                    raise InvalidScenarioState(msg)
 
-            except TypeError as e:
-                msg = f"Invalid settings for {g_label}|{t_label}. "\
-                    "Unable to create using the factory. See log for "\
-                    "more details."
-                logging.error(msg)
-                logging.error(e)
-                raise TypeError(msg) from e
+def report(
+    tags: Optional[Union[str, list[str]]] = None,
+    group: Optional[str] = None
+) -> None:
+    """Generates a report and prints to console of all the files that
+    are curently in the inventory.
 
-            return new_component
+    :param tags: The tags to filter for, defaults to None
+    :type tags: Optional[Union[str, list]], optional
+    """
+    global _groups
 
-        elif j_flag:
-            if LOG_FACTORY_CREATE:
-                g_label = component_def["group_label"]
-                t_label = component_def["type_label"]
-                msg = f"creating {g_label}:{t_label} with Journal, no Factory"
-                logging.info(msg)
-
-            try:
-                if inspect.isclass(component_create):
-                    new_component = component_create(
-                        journal=self._journal,
-                        **component_def["arguments"])
-                else:
-                    msg = f"invalid type in factory for {g_label}|{t_label}"
-                    logging.error(msg)
-                    raise InvalidScenarioState(msg)
-
-            except TypeError as e:
-                msg = f"Invalid settings for {g_label}|{t_label}. "\
-                    "Unable to create using the factory. See log for "\
-                    "more details."
-                logging.error(msg)
-                logging.error(e)
-                raise TypeError(msg) from e
-
-            return new_component
-
+    title = "Factory report"
+    if group is not None:
+        title += f" - group={group}"
+    if tags is not None:
+        if isinstance(tags, list):
+            tag_str = " ".join(tags)
+            title += f", tags={tag_str}"
         else:
-            if LOG_FACTORY_CREATE:
-                g_label = component_def["group_label"]
-                t_label = component_def["type_label"]
-                msg = f"creating {g_label}:{t_label} w/out Factory or journal"
-                logging.info(msg)
+            title += f", tag={tags}"
 
-            try:
-                if inspect.isclass(component_create):
-                    new_component = component_create(
-                        **component_def["arguments"])
-                else:
-                    msg = f"invalid type in factory for {g_label}|{t_label}"
-                    logging.error(msg)
-                    raise InvalidScenarioState(msg)
-            except TypeError as e:
-                msg = f"Invalid settings for {g_label}|{t_label}. "\
-                    "Unable to create using the factory. See log for "\
-                    "more details."
-                logging.error(msg)
-                logging.error(e)
-                raise TypeError(msg) from e
+    longest = 0
+    all_entries = ""
+    first = True
+    if group is not None:
+        search_groups = [group]
+    else:
+        _groups.sort()
+        search_groups = _groups
 
-            return new_component
-
-    def registry_listing(
-        self,
-        group_label: Union[str, None] = None
-    ) -> List[str]:
-        """Lists factory entries. if no group listed it returns groups,
-        else if a group is entered it returns all types in that group.
-
-        :param group_label: A group label, defaults to None
-        :type group_label: Union[str, None], optional
-        :return: A listing of types in a group or all groups
-        :rtype: List[str]
-        """        
-        if group_label is None:
-            return list(self._registry.keys())
+    for group in search_groups:
+        if first:
+            all_entries += f"{group.upper()}\n"
+            first = False
         else:
-            try:           
-                group = self._registry[group_label]                
-                return list(group.keys())
-            except KeyError as e:
-                msg = f"Invalid group_label: {group_label} not found."
-                raise KeyError(msg) from e
+            all_entries += "-"*79
+            all_entries += f"\n{group.upper()}\n"
+
+        entries = list_entries(tags=tags, group=group)
+        for entry in entries:
+            entry_str = f"  - {entry.factory_id:<15} | "
+            if entry.factory_can_init:
+                entry_str += " Y  |  "
+            else:
+                entry_str += " N  |  "
+            entry_str += f"{entry.summary:50} |"
+
+            tags_str = ""
+            if entry.tags is not None:
+                tags_str = " ".join(entry.tags)
+            entry_str += tags_str
+
+            if len(entry_str) > longest:
+                longest = len(entry_str)
+
+            all_entries += f"{entry_str}\n"
+
+    # Setup title/'banner', the spaced out title for the columns
+    name = "Factory ID"
+    summary = "Summary"
+    banner = f"    {name:<15} | init | {summary:<50} | Tags"
+    if len(title) > longest:
+        longest = len(title)
+    if len(banner) > longest:
+        longest = len(banner)
+
+    if longest > len(title):
+        # now center the title
+        spaces = int((longest-len(title))/2)
+        space_str = " "*spaces
+        title = f"\n{space_str}{title}"
+    # and finally put everything together and print
+    line = "="*longest
+    small_line = "-"*longest
+    title += f"\n{line}\n{banner}\n{small_line}\n{all_entries}"
+    print(title)
+
+
+def entry_exists(factory_id: str) -> bool:
+
+    return factory_id in _inventory
+
+
+def group_exists(group: str) -> bool:
+    return group in _groups
+
+
+def get_group_names() -> list:
+    return copy.deepcopy(_groups)

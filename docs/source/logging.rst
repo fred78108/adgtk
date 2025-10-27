@@ -76,6 +76,8 @@ The ADGTK framework has a flexible tracking module for use within your experimen
 
 Log file
 ========
+.. warning::
+    Pending documentation update.
 
 The log is centrally located in the ./logs directory. The file name is based on the name of the experiment. for example, my_experiment is my_experiment.log. The file is not cleared between runs so you can see the history of the experiment. The logging mechanism uses standard Python logging. To use:
 

@@ -5,6 +5,11 @@ Extending
 .. toctree::
    :maxdepth: 2
 
+
+.. warning::
+    This section needs to be updated as it refers to earlier versions of the framework.
+
+
 You are not limited to the components that are provided. You can create your own components and use them in your experiments. The toolkit is designed to be extensible. By following the pattern provided you can create your own components and use them in your experiments.
 
 

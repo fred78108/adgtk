@@ -1,0 +1,11 @@
+=========
+Changelog
+=========
+
+Release 0.1.3
+=============
+
+- Improved Impairment Engine and supporting code
+- Introduced Pipeline building blocks
+- Introduced batch mode MVP (run and list)
+- Improved FolderManager functionality

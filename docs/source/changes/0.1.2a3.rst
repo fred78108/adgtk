@@ -1,0 +1,11 @@
+=============
+ADGTK 0.1.2a3
+=============
+
+Code cleanup and minor bug fixes
+
+- minor code cleanup, improved readability
+- added adgtk.utils.file module
+- Improved journal reporting
+- Improved metric tracking
+- Bug fixes for preview tree building (UX)

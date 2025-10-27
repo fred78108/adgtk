@@ -1,6 +1,6 @@
 [project]
 name = "adgtk"
-version = "0.1.2a3"
+version = "0.2.0b2"
 authors = [
   { name="Frederick Diehl", email="fdiehl@ualr.edu" },
 ]
@@ -17,11 +17,15 @@ dependencies = [
   "toml",
   "jinja2",
   "PyYAML",
+  "pandas",
   "regex",
   "requests",
   "anytree",  
   "matplotlib", 
-  "prompt_toolkit"
+  "numpy",
+  "prompt-toolkit",
+  "pydantic",
+  "docstring-parser"
 ]
 
 [project.urls]
@@ -76,7 +80,8 @@ deps = ["flake8"]
 commands = [["flake8", "src"]]
 
 [project.scripts]
-adgtk-mgr = "adgtk.management.cli:manager"
+adgtk-mgr = "adgtk.manager.cli:manager"
+adgtk-ds = "adgtk.manager.ds_cli:main"
 # adgtk = "adgtk.management.cli:manager"
 # adgtk-plugin-wizard = "adgtk.management.cli:plugin_creator"
 

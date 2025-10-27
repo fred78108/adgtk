@@ -19,7 +19,7 @@ A project is a collection of experiments. It is the highest level of organizatio
 
 .. code-block:: console
 
-    adgtk-mgr --sample project create project1
+    adgtk-mgr project create project1
 
 Which creates a project called project1. navigating into this folder will allow you to define custom components as well as create and run experiments. 
 
@@ -30,7 +30,7 @@ An experiment is a scenario that is run by the toolkit. It is a collection of co
 
 .. code-block:: console
 
-    adgtk-mgr experiment create experiment1
+    adgtk-mgr experiment build experiment1
 
 This will start an interactive wizard that will guide you through the creation of an experiment. It is not required to use the wizard, but it is a helpful tool to get started. To create alternative experiments you can copy the file you created and modify it to suit your needs. For example, changing the prompt across the different files will allow you to create a new experiment that is similar to the original.
  

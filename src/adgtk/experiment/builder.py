@@ -1,490 +1,396 @@
-"""Builds and manages experiments"""
-import logging
-import sys
+"""Builds and manages experiments via a CLI UX
+
+TODO: take advantage of _working_on
+"""
+# setup logfile for this and sub-modules
+from adgtk.utils import create_logger
+
 import os
-from typing import Union, cast
-import toml
+from typing import Optional, Union
 import yaml
-from adgtk.common import (
-    InvalidBlueprint,
-    FactoryBlueprint,
-    ExperimentDefinition,
-    ArgumentSetting,
-    ArgumentType,
-    convert_exp_def_to_string)
-from adgtk.scenario import ScenarioManager, SCENARIO_GROUP_LABEL
-from adgtk.utils import (
-    get_user_input,
-    get_more_ask,
-    create_line)
+from adgtk.utils import get_user_input, get_more_ask
+import adgtk.factory.component as factory
+from adgtk.factory.structure import BlueprintQuestion
+from adgtk.utils import get_user_input
+from adgtk.experiment.structure import (
+    EXPERIMENT_LABEL,
+    SCENARIO_LABEL,
+    AttributeEntry,
+    ExperimentDefinition)
+import adgtk.tracking.project as project_manager
+# ----------------------------------------------------------------------
+# Module logging
+# ----------------------------------------------------------------------
+
+# Set up module-specific logger
+_logger = create_logger(
+    "adgtk.builder.log",
+    logger_name=__name__,
+    subdir="framework"
+)
+
+# ----------------------------------------------------------------------
+# Globals
+# ----------------------------------------------------------------------
+# public
+MIN_LINE_LENGTH = 50
+
+# private
+_working_on: list[str] = []        # so we can walk a tree
+# ----------------------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------------------
 
 
-class ExperimentBuilder():
-    """Used to build experiments"""
+def _get_user_selection_from_group(
+    group: str,
+    user_prompt: str,
+    tags: Optional[Union[str, list[str]]] = None,
+) -> str:
+    """Uses a CLI based experience to list options for the user and
+    then via the get_user_input collects the user selection. it then
+    returns the associated factory_id of this selection
 
-    def __init__(
-        self,
-        experiment_definition_dir: str,
-        load_user_modules:list,
-        scenario_manager: Union[ScenarioManager, None] = None,
-    ):
-        self.experiment_definition_dir = experiment_definition_dir
-        self.outer_configuring = "Scenario"     # for list processing
-        self.currently_configuring = "Experiment"
-        self.file_format = "yaml"
-        self.last_line = ""
+    :param user_prompt: The prompt to the user
+    :type user_prompt: str
+    :param group: The group to search for
+    :type group: str
+    :raises ValueError: Unexpected get_user_input value
+    :return: the factory_id of the user selection
+    :rtype: str
+    """
+    entries = factory.list_entries(group=group, tags=tags)
 
-        if scenario_manager is None:
-            self.scenario_manager = ScenarioManager(
-                load_user_modules=load_user_modules,
-                experiment_definition_dir=experiment_definition_dir)
+    title = f"Group: {group}:"
+    line_length = max(len(title), MIN_LINE_LENGTH)
+    print(title)
+    print("-"*line_length)
+    choices: list[str] = []
+    idx_choices = []
+    for idx, entry in enumerate(entries):
+        print(f"  {idx} : {entry.factory_id:<15} | {entry.summary:50}")
+        choices.append(entry.factory_id)
+        choices.append(str(idx))
+        idx_choices.append(entry.factory_id)
+    choice = get_user_input(
+        requested="str",
+        user_prompt=user_prompt,
+        choices=choices,
+        allow_whitespace=False)
+
+    # catch numbers.
+    # if choice in idx_choices:
+    is_index = False
+    try:
+        _ = int(choice)
+        is_index = True
+    except ValueError:
+        pass
+
+    if is_index:
+        # need to convert and return
+        if isinstance(choice, str):
+            idx = int(choice)
+        elif isinstance(choice, int):
+            # should really never happen but again, safety
+            idx = choice
         else:
-            self.scenario_manager = scenario_manager
+            raise ValueError("Unexpected get_user_input value")
 
-    def get_registered(
-        self,
-        group: str,
-        to_console: bool = True
-    ) -> list:
-        """Gets the type listing and if to_console prints to console as well
+        return idx_choices[idx]
 
-        :param manager: The scenario manager to work with
-        :type manager: ScenarioManager
-        :param group: The group to fetch
-        :type group: str
-        :param to_console: print to console?, defaults to True
-        :type to_console: bool, optional
-        :return: a list of valid types for this group
-        :rtype: list
-        """
-        try:
-            registered_types = self.scenario_manager.registry_listing(group)
-        except KeyError:
-            err_msg = "group not found. Check factory"
-            if group == SCENARIO_GROUP_LABEL:                
-                err_msg = "no scenarios found. Review your factory and"\
-                          " code. The scenario should be listed when you "\
-                          f"review the factory. observed {group}"
-            else:
-                if isinstance(group, str):
-                    err_msg = f"group not found: {group}. Check factory"
+    if isinstance(choice, str) and factory.entry_exists(choice):
+        return choice
 
-            logging.error(err_msg)
-            sys.exit(1)
-        if not to_console:
-            return registered_types
-
-        group_title = f"\n Registered {group} types are :"
-        line_list = ["."] * len(group_title)
-        line = "".join(line_list)
-        print(group_title)
-        print(line)
-        print()
-
-        for label in registered_types:
-            label_text = f" - {label}"
-            desc = self.scenario_manager.get_description(
-                group_label=group,
-                type_label=label)
-
-            print(f"{label_text:<30} | {desc}")
-
-        print()  # extra space
-        return registered_types
-
-    def build_interactive(self, name: Union[str, None] = None):
-        """Interactive building of an experiment. This is the entry
-        point for the experiment builder. It provides the UX for
-        creating an experiment and saving to disk.
-
-        :param name: The name of the experiment, defaults to None
-        :type name: Union[str, None], optional
-        """
-
-        exp_title = ". Experiment builder wizard ."
-        self.last_line = create_line(exp_title, char=".")
-        print(self.last_line)
-        print(exp_title)
-        print(self.last_line)
-
-        # -------------------------------------------------------------
-        # get the global settings, name, description
-        # -------------------------------------------------------------
-        if name is None:
-            exp_name = get_user_input(
-                configuring=self.currently_configuring,
-                request="Please enter the name of the experiment",
-                requested="str",
-                allow_whitespace=False,
-                helper="This should be a unique name. This is your filename")
-        else:
-            exp_name = name
-
-        comments = get_user_input(
-            configuring=self.currently_configuring,
-            requested="str",
-            request="Short description of the experiment",
-            max_characters=50,
-            helper="This should be less than 50 characters")
-
-        if not isinstance(comments, str):
-            comments = ""
-            logging.warning("Error processing comments input")
-
-        # start working on the scenario
-        self.currently_configuring = "Scenario"
-        scenario_setting = ArgumentSetting(
-            help_str="\nWhat scenario do you wish to construct from?",
-            group_label="scenario",
-            argument_type=ArgumentType.BLUEPRINT)
-        exp_conf = self._proc_blueprint(scenario_setting)
-        experiment = ExperimentDefinition(
-            configuration=exp_conf, comments=comments)
-        
-        # ensure group label is set post processing.
-        exp_conf["group_label"] = SCENARIO_GROUP_LABEL
-        preview = convert_exp_def_to_string(exp_conf)
-        intro = f"\nExperiment preview for {exp_name}: "
-        print(intro)
-        print(preview)
-        file_w_path = "not-set"
-        if self.file_format == "toml":
-            file_w_path = os.path.join(
-                self.experiment_definition_dir,
-                f"{exp_name}.toml")
-        elif self.file_format == "yaml":
-            file_w_path = os.path.join(
-                self.experiment_definition_dir,
-                f"{exp_name}.yaml")
-        else:
-            msg = f"unknown format {self.file_format}. Reverting to yaml"
-            logging.error(msg)
-            self.file_format = "yaml"
-            file_w_path = os.path.join(
-                self.experiment_definition_dir,
-                f"{exp_name}.yaml")
-        
-        save_as = get_user_input(
-            configuring=self.currently_configuring,
-            request="Save file as",
-            requested="str",
-            default_selection=file_w_path,
-            allow_whitespace=False)
-
-        # take the default?
-        if isinstance(save_as, str):
-            if len(save_as) == 0:
-                save_as = file_w_path
-
-            with open(save_as, encoding="utf-8", mode="w") as outfile:
-                if self.file_format == "toml":
-                    toml.dump(experiment, outfile)
-                elif self.file_format == "yaml":
-                    yaml.safe_dump(
-                        experiment,
-                        outfile,
-                        default_flow_style=False,
-                        sort_keys=False)
-        else:
-            logging.error("Unable to save file due to unexpected input")
-
-    def _proc_blueprint(self, setting: ArgumentSetting) -> FactoryBlueprint:
-        """Processes a blueprint argugment
-
-        :param setting: The setting to process
-        :type setting: ArgumentSetting
-        :raises InvalidBlueprint: Missing Blueprint definition
-        :return: A blueprint for the factory
-        :rtype: FactoryBlueprint
-        """
-
-        exp_def: FactoryBlueprint = {
-            "group_label": "experiment",    # not used in this context
-            "type_label" : "",
-            "arguments" : {},
-        }
-        if "group_label" not in setting:
-            msg = f"Invalid blueprint: {setting}. Missing group_label"
-            logging.error(msg)
-            raise InvalidBlueprint(msg)
-        else:
-            exp_def["group_label"] = setting["group_label"]
-
-        try:
-            type_listing = self.get_registered(
-                group=setting["group_label"], to_console=False)
-        except ValueError:
-            print(f"ERROR: group not found {setting['default_value']}")
-            print(self.scenario_manager)
-            sys.exit()
+    msg = f"Unexpected get_user_input value: {choice}"
+    _logger.error(msg)
+    print(f"ERROR: {msg}")
+    raise ValueError(msg)
 
 
-        if len(type_listing) == 1:
+def _perform_interview(
+    interview: list[BlueprintQuestion]
+) -> list[AttributeEntry]:
+    """Performs an interview by iterating through a series of questions.
 
-            # skip the UX for the built-in objects that have only one
-            if setting["group_label"]  == "measurement-engine":
-                pass
-            elif setting["group_label"]  == "measurement-set":
-                pass
-            else:
-                msg = f"\nNOTE: Factory only has option: {setting['group_label']}:"
-                msg += f"{type_listing[0]}"
-                self.last_line = create_line(msg, char=".")
-                print(msg)
-                print(self.last_line)
-                print()
+    :param interview: _description_
+    :type interview: list[BlueprintQuestion]
+    :raises ValueError: Unexpected combinations
+    :return: A list of attributes for init via a factory
+    :rtype: list[AttributeEntry]
+    """
+    item_being_built = _working_on[-1]  # set at _expand
 
-            
-            type_label = type_listing[0]
+    # not expected but just in case
+    if len(interview) == 0:
+        raise ValueError("Expand requested with an empty interview")
 
-        else:
-            # re-pull, but display to console
-            type_listing = self.get_registered(
-                group=setting["group_label"], to_console=True)
+    attributes = []
+    for entry in interview:
+        # placeholders
+        value: Union[AttributeEntry, str, float, int, bool, list] = ""
+        factory_id = None
+        if entry.entry_type == "expand":
+            if entry.group is None:
+                raise ValueError("group must be defined for type expand")
+            group_name = entry.group
 
-            type_label = get_user_input(
-                configuring=self.currently_configuring,
-                request=setting["help_str"],
-                choices=type_listing,
-                requested="str")
+            if not factory.group_exists(group_name):
+                msg = (f"unknown group {group_name}. Valid groups are: "
+                       f"{factory.get_group_names()}")
+                _logger.error(msg)
+                raise ValueError(msg)
 
-        blueprint = self.scenario_manager.get_blueprint(
-            group_label=setting["group_label"], type_label=type_label)
-        
-        if "introduction" in blueprint:
-            print()
-            print()
-            self.last_line = create_line(
-                text=self.last_line, char="=", title=blueprint["group_label"])
-            print(self.last_line)
-            print(blueprint["introduction"])
-            self.last_line = create_line(text=self.last_line, char="=")
-            print(self.last_line)
-
-        exp_def["type_label"] = type_label
-        if blueprint is None:
-            raise InvalidBlueprint("Missing Blueprint definition")
-
-        self.currently_configuring = \
-            f"{blueprint['group_label']}:{blueprint['type_label']}"
-
-        exp_def["arguments"] = self._proc_arguments(blueprint["arguments"])
-        return exp_def
-
-    def _proc_arguments(self, arguments: dict) -> dict:
-        """Processes the arguments for the blueprint
-
-        :param arguments: The arguments to process
-        :type arguments: dict
-        :return: The processed arguments
-        :rtype: dict
-        """
-
-        exp_config = {}
-        for key, value in arguments.items():
-            exp_config[key] = self._proc_arg(setting=value)
-
-        return exp_config
-
-    def _proc_arg(
-        self,
-        setting: ArgumentSetting
-    ) -> Union[list, int, str, float, bool, dict, FactoryBlueprint]:
-        """Process a single argument
-
-        :param setting: The argument to process
-        :type setting: ArgumentSetting
-        :raises InvalidBlueprint: Invalid blueprint found
-        :return: The result based on the requested type in the setting
-        :rtype: Union[list, int, str, float, bool, dict, FactoryBlueprint]
-        """
-        if "argument_type" not in setting:
-            msg = f"Invalid blueprint: {setting}"
-            logging.error(msg)
-            raise InvalidBlueprint(msg)
-
-        # cover the optional key(s)
-        if "default_value" not in setting:
-            setting["default_value"] = None
-    
-
-        if setting["argument_type"] == ArgumentType.ML_STRING:
-            return get_user_input(
-                configuring=self.currently_configuring,
-                request=setting["help_str"],
-                default_selection=setting["default_value"],
-                requested="ml-str",
-                helper="Press [Esc] followed by [Enter] to complete input")
-            
-        if setting["argument_type"] == ArgumentType.STRING:
-
-            return get_user_input(
-                configuring=self.currently_configuring,
-                request=setting["help_str"],
-                default_selection=setting["default_value"],
-                requested="str",
-                helper="please enter a string")
-        elif setting["argument_type"] == ArgumentType.INT:
-            return get_user_input(
-                configuring=self.currently_configuring,
-                request=setting["help_str"],
-                default_selection=setting["default_value"],
-                requested="int",
-                helper="please enter an Integer")
-        elif setting["argument_type"] == ArgumentType.FLOAT:
-            return get_user_input(
-                configuring=self.currently_configuring,
-                request=setting["help_str"],
-                default_selection=setting["default_value"],
-                requested="float",
-                helper="please enter a float")
-        elif setting["argument_type"] == ArgumentType.BOOL:
-            return self._proc_bool(setting=setting)
-        elif setting["argument_type"] == ArgumentType.BLUEPRINT:
-            return self._proc_blueprint(setting=setting)
-        elif setting["argument_type"] == ArgumentType.LIST:
-            return self._proc_list(setting=setting)
-        elif setting["argument_type"] == ArgumentType.DICT:
-            return self._proc_dict(setting=setting)
-
-    def _get_bool_reply(self, help_str:str,default:Union[str, bool]) -> bool:
-        if isinstance(default, str):
-            default_str = default.lower()
-        else:
-            if default:
-                default_str = "true"
-            else:
-                default_str = "false"
-
-        value = get_user_input(
-            request=help_str,
-            requested="str",
-            choices=["true", "false"],
-            default_selection=default_str,
-            configuring=self.currently_configuring)
-
-        if isinstance(value, str):
-            if value.lower() == "true":
-                return True
-
-        return False               
-
-    def _proc_bool(self, setting: ArgumentSetting) -> bool:
-        """Process a boolean setting request
-
-        :param setting: The requested setting
-        :type setting: ArgumentSetting
-        :return: The user input
-        :rtype: bool
-        """
-        return self._get_bool_reply(
-            help_str=setting["help_str"],
-            default=setting["default_value"])
-        
-    def _proc_list(self, setting: ArgumentSetting) -> list:
-        """Process a list of entries from the user
-
-        :param setting: The requested argument entries
-        :type setting: ArgumentSetting
-        :return: The user input
-        :rtype: list
-        """
-
-        # Introductions
-        
-        if "list_intro" in setting:
-            self.last_line = create_line(
-                text=self.last_line, char=".", title="list entry")
-            print(self.last_line)
-            if "group_label" in setting:
-                title = create_line(
-                text=self.last_line, char="=", title=setting["group_label"])    
-            else:
-                title = create_line(text=self.last_line, char="=")    
-            
-            print(setting["list_intro"])
-            print(title)
-                
-        if "list_arg_type" not in setting:
-            msg = f"Invalid blueprint: {setting}. Missing list_arg_type"
-            logging.error(msg)
-            raise InvalidBlueprint(msg)
-        
-        arg_setting = ArgumentSetting(
-                help_str=setting["help_str"],                
-                argument_type=setting["list_arg_type"])
-    
-        # copy over optional?
-        if "default_value" in setting:
-                arg_setting["default_value"] = setting["default_value"]
-        if "introduction" in setting:
-                arg_setting["introduction"] = setting["introduction"]
-        
-        if setting["list_arg_type"] == ArgumentType.BLUEPRINT:
-            if "list_group_label" not in setting:
-                msg = f"Invalid blueprint: {setting}. Missing list_group_label"
-                logging.error(msg)
-                raise InvalidBlueprint(msg)
-            arg_setting["group_label"] = setting["list_group_label"]  
-                
-        # setup
-        items = []
-
-        more = True
-        print(setting['help_str'])
-
-        # Is empty ok?
-        if "list_min" in setting:
-            if setting["list_min"] == 0:
-                no_data = self._get_bool_reply(
-                    help_str="Do you want to set as []",
-                    default=True)
-
-                if no_data:
-                    return []        
-
-
-        self.outer_configuring = self.currently_configuring
-        while more:
-            items.append(self._proc_arg(setting=arg_setting))
-            more = get_more_ask(self.currently_configuring)
-        print()
-        self.currently_configuring = self.outer_configuring
-
-        return items
-
-    def _proc_dict(self, setting: ArgumentSetting) -> dict:
-        """Processes collection of a dictionary key value pairs from the
-        user.
-
-        :param setting: The argument to process
-        :type setting: ArgumentSetting
-        :return: The user input
-        :rtype: dict
-        """
-
-        data = {}
-        more = True
-
-        while more:
-            key = get_user_input(
-                request=f"{setting['help_str']} [key]",
-                configuring=self.currently_configuring,
-                requested="str",
-                min_characters=1,
-                allow_whitespace=False)
-
+            factory_id = _get_user_selection_from_group(
+                user_prompt=entry.question,
+                group=group_name)
+            value = _expand(factory_id=factory_id, attribute=entry.attribute)
+        elif entry.entry_type == "ml-string":
             value = get_user_input(
-                request=f"{setting['help_str']} [{key} value]",
-                configuring=self.currently_configuring,
-                requested="str",
-                allow_whitespace=True)
+                user_prompt=entry.question,
+                requested="ml-str"
+            )
+        elif entry.entry_type == "list[expand]":
+            # get the minimum values
+            if entry.group is None:
+                raise ValueError("group must be defined for type expand")
 
-            if key in data:
-                print(f"Key {key} already exists. no action taken.")
+            group_name = entry.group
+            value = []
+            while get_more_ask():
+                factory_id = _get_user_selection_from_group(
+                    user_prompt=entry.question,
+                    group=group_name)
+
+                exp_value = _expand(factory_id=factory_id,
+                                    attribute=entry.attribute)
+                value.append(exp_value)
+
+        elif entry.choices is not None and len(entry.choices) > 0:
+            # handle all choice based calls here
+            if entry.entry_type == "bool":
+                value = get_user_input(
+                    user_prompt=entry.question,
+                    requested="bool",
+                    configuring=item_being_built,
+                    choices=entry.choices
+                )
+            elif entry.entry_type == "str":
+                value = get_user_input(
+                    user_prompt=entry.question,
+                    requested="str",
+                    configuring=item_being_built,
+                    choices=entry.choices
+                )
+            elif entry.entry_type == "int":
+                value = get_user_input(
+                    user_prompt=entry.question,
+                    requested="int",
+                    configuring=item_being_built,
+                    choices=entry.choices
+                )
+            elif entry.entry_type == "float":
+                value = get_user_input(
+                    user_prompt=entry.question,
+                    requested="float",
+                    configuring=item_being_built,
+                    choices=entry.choices
+                )
             else:
-                data[key] = value
+                raise ValueError(
+                    "Unexpected requested combination with choices")
+        else:
+            if entry.entry_type == "bool":
+                value = get_user_input(
+                    user_prompt=entry.question,
+                    requested="bool",
+                    configuring=item_being_built
+                )
+            elif entry.entry_type == "str":
+                value = get_user_input(
+                    user_prompt=entry.question,
+                    requested="str",
+                    configuring=item_being_built
+                )
+            elif entry.entry_type == "int":
+                value = get_user_input(
+                    user_prompt=entry.question,
+                    requested="int",
+                    configuring=item_being_built
+                )
+            elif entry.entry_type == "float":
+                value = get_user_input(
+                    user_prompt=entry.question,
+                    requested="float",
+                    configuring=item_being_built
+                )
+        if isinstance(value, str) and len(value) == 0:
+            raise ValueError("Value not captured")
 
-            more = get_more_ask(self.currently_configuring)
+        # now update the list
+        if isinstance(value, AttributeEntry):
+            attributes.append(value)
+        else:
+            attributes.append(AttributeEntry(
+                attribute=entry.attribute,
+                init_config=value,
+                factory_id=factory_id
+            ))
 
-        return data
+    return attributes
+
+
+def _expand(factory_id: str, attribute: str) -> AttributeEntry:
+    """Expands an attribute
+
+    :param factory_id: The factory ID to expand
+    :type factory_id: str
+    :param attribute: The label of the attribute
+    :type attribute: str
+    :raises ValueError: unknown factory_id
+    :return: The collected configuration
+    :rtype: AttributeEntry
+    """
+    global _working_on
+
+    if not factory.entry_exists(factory_id):
+        msg = f"Requesting to expand an unknown factory_id {factory_id}"
+        _logger.error(msg)
+        raise ValueError(msg)
+    interview = factory.get_interview(factory_id=factory_id)
+
+    if len(interview) == 0:
+        factory_init = False
+        init_config: Optional[list] = None
+        if attribute == SCENARIO_LABEL:
+            # scenarios are unique at the root and must be created
+            factory_init = True
+            init_config = []
+
+        return AttributeEntry(
+            attribute=attribute,
+            factory_id=factory_id,
+            init_config=init_config,
+            factory_init=factory_init
+        )
+
+    _working_on.append(factory_id)
+
+    return_value = AttributeEntry(
+        factory_id=factory_id,
+        attribute=attribute,
+        init_config=_perform_interview(interview=interview),
+        factory_init=True
+    )
+
+    _working_on.pop()
+    return return_value
+
+
+# ----------------------------------------------------------------------
+# Public
+# ----------------------------------------------------------------------
+def create_experiment_name_ux() -> str:
+    user_prompt = "Do you want the system to automatically create a name"
+    auto_create = get_user_input(
+        user_prompt=user_prompt,
+        requested="str",
+        choices=["yes", "no", "y", "n"],
+        allow_whitespace=False,
+        default_selection="yes"
+    )
+    if not isinstance(auto_create, str):
+        msg = "create_experiment_name_ux get_user_input failure"
+        _logger.error(msg)
+        raise ValueError("Unexpected get_user_input")
+
+    if auto_create.lower().startswith("y"):
+        cur_prefix_options = project_manager.get_prefix_list()
+        if len(cur_prefix_options) > 0:
+            print(f"Existing prefixes:")
+            for entry in cur_prefix_options:
+                print(f" - {entry}")
+
+        helper_str = ("if you want to create a new prefix simply "
+                      "enter one here")
+        prefix = get_user_input(
+            user_prompt="What prefix do you want to use",
+            requested="str",
+            allow_whitespace=False,
+            helper=helper_str,
+            min_characters=1,
+            max_characters=20)
+        if not isinstance(prefix, str):
+            msg = "create_experiment_name_ux get_user_input failure"
+            _logger.error(msg)
+            raise ValueError("Unexpected get_user_input")
+        # return here
+        return project_manager.generate_experiment_name(
+            prefix=prefix, update_next="minor")
+
+    name = get_user_input(
+        user_prompt="Please enter an experiment name",
+        requested="str",
+        allow_whitespace=False)
+    if not isinstance(name, str):
+        msg = "create_experiment_name_ux get_user_input failure"
+        _logger.error(msg)
+        raise ValueError("Unexpected get_user_input")
+
+    return name
+
+
+# TODO: add tags, etc.
+def build_experiment(
+    name: Optional[str] = None,
+    scenario_factory_id: Optional[str] = None,
+    tags: Optional[str] = None
+) -> None:
+
+    if name is None:
+        name = create_experiment_name_ux()
+
+    description = get_user_input(
+        user_prompt="Experiment description",
+        requested="str",
+        max_characters=80,
+        min_characters=1
+    )
+
+    if scenario_factory_id is not None:
+        # check first
+        if not factory.entry_exists(scenario_factory_id):
+            print("WARNING: Scenario with that factory_id does not exist.")
+        scenario_factory_id = None
+
+    if scenario_factory_id is None:
+        scenario_factory_id = _get_user_selection_from_group(
+            group="scenario",
+            user_prompt="Please select the scenario you wish to build",
+            tags=tags)
+
+    scenario_config = _expand(scenario_factory_id, attribute=SCENARIO_LABEL)
+
+    if not isinstance(name, str):
+        raise ValueError("Unexpected return for value")
+    if not isinstance(description, str):
+        raise ValueError("Unexpected return for description")
+
+    exp_def = ExperimentDefinition(
+        name=name,
+        attribute=EXPERIMENT_LABEL,
+        description=description,
+        init_config=scenario_config,
+        factory_init=True
+    )
+
+    filename = f"{name}.yaml"
+    file_w_path = os.path.join("blueprints", filename)
+    with open(file=file_w_path, mode="w", encoding="utf-8") as outfile:
+        yaml.safe_dump(
+            exp_def.model_dump(),
+            outfile,
+            default_flow_style=False,
+            sort_keys=False)
+
+    _logger.info(f"Created experiment file: {file_w_path}")
