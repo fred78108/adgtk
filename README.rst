@@ -82,3 +82,7 @@ ADGTK is designed to be run from the command line. The primary command is `adgtk
       $ adgtk-mgr factory                   Lists available factory blueprints
       $ adgtk-mgr factory agent             Lists agent factory blueprints
 
+Known Issues
+============
+
+- the adgtk-mgr expects a bootstrap.py in the folder for all actions. To work around creating a project (which creates a full bootstrap file) create a bootstrap.py. It can be an empty file. This ensures that the adgtk-mgr commands can be executed without errors. The reason for this is to protect against accidental execution of commands in an uninitialized or incorrect environment.
