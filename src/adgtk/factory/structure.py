@@ -62,12 +62,13 @@ SupportedChoiceTypes = Union[int, float, str]
 # Structures - User-facing models (external data)
 # ----------------------------------------------------------------------
 
+
 class BlueprintQuestion(BaseModel):
     """Used by an experiment builder (interview, etc).
 
     This should be part of a list of questions. Each BlueprintQuestion
     represents a single attribute that needs to be captured for
-    experiment definition creation. 
+    experiment definition creation.
 
     attribute: The associated attribute in __init__
     question: The question to ask the user
@@ -80,14 +81,14 @@ class BlueprintQuestion(BaseModel):
     min_value: if entry_type is numeric restricts the minimum value
     max_value: if entry_type is numeric restricts the maximum value
     """
-    attribute:str
+    attribute: str
     question: str
-    entry_type:SupportedCaptureTypes
+    entry_type: SupportedCaptureTypes
     helper: Optional[str] = ""
     group: Optional[str] = None
     min_value: Optional[float] = None
     max_value: Optional[float] = None
-    choices: list[SupportedChoiceTypes] = Field(default_factory=list)    
+    choices: list[SupportedChoiceTypes] = Field(default_factory=list)
     default_value: Optional[SupportedChoiceTypes] = None
 
 
@@ -96,7 +97,7 @@ class FactoryOrder(BaseModel):
     approach is to use the factory_id. But if this is not available then
     the order should have both a group and a name. This will then allow
     for loading dynamic components in the factory such as functions."""
-    factory_id:str
+    factory_id: str
     init_args: Optional[dict] = None
 
 
@@ -106,7 +107,7 @@ class FactoryEntry(BaseModel):
     group: str
     tags: list[str] = Field(default_factory=list)
     summary: str
-    factory_id:str = secrets.token_hex(4)
+    factory_id: str = secrets.token_hex(4)
     interview_blueprint: list[BlueprintQuestion] = Field(default_factory=list)
     factory_can_init: bool = True
 
@@ -128,7 +129,7 @@ class SupportsFactory(ABC):
     """
     factory_id: ClassVar[str]
     group: ClassVar[str]
-    tags: ClassVar[list[str]]  = []
+    tags: ClassVar[list[str]] = []
     interview_blueprint: ClassVar[list[BlueprintQuestion]] = []
     summary: ClassVar[str] = "No summary found"
     factory_can_init: ClassVar[bool] = True

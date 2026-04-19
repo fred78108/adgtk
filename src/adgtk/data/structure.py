@@ -28,20 +28,23 @@ OrientationTypes = Literal[
 # what structure will be found on load? helps inform how to load.
 FileEncodingTypes = Literal[
     "csv",
+    "hf-json",
     "json",
     "pickle",
     "pandas",
     "text",
 ]
 
-FileActionTypes=Literal["copy", "move", "none"]
+FileActionTypes = Literal["copy", "move", "none"]
+
 PurposeTypes = Literal[
     "generated",
     "measurement",
     "messages",
-    "other",    
-    "performance",    
-    "prompts",
+    "model",
+    "other",
+    "performance",
+    "prompts"
 ]
 
 SUPPORTED_ORIENTATION_TYPES = list(get_args(OrientationTypes))
@@ -61,7 +64,7 @@ class ColumnDefinition(BaseModel):
 class FileMetaData(BaseModel):
     """File specific. naming convention: file.csv has file.meta.json.
     This data structure is for the .meta.json."""
-    description:str    
+    description: str
     fields: list[ColumnDefinition]
     created_by: Optional[str] = None
     updated_date: str = Field(
@@ -71,7 +74,7 @@ class FileMetaData(BaseModel):
 class FileDefinition(BaseModel):
     """Defines a file and how to process it. More an internal structure."""
     file_id: str        # used for indexing multiple files. must be unique
-    filename:str
+    filename: str
     path: str
     encoding: FileEncodingTypes
     # metadata: Optional[FileMetaData] = None
@@ -80,26 +83,29 @@ class FileDefinition(BaseModel):
 
 
 class DataDefinition(BaseModel):
-    """The combined structure"""    
+    """The combined structure"""
     shuffle_on_load: Optional[bool] = None
-    key_rename_map: Optional[dict[str,str]] = None
+    key_rename_map: Optional[dict[str, str]] = None
     target_orientation: Optional[OrientationTypes] = None
 
-class FileDataDefinition(DataDefinition):    
-    file_definition: FileDefinition    
+
+class FileDataDefinition(DataDefinition):
+    file_definition: FileDefinition
 
 
 class InMemoryDataDefinition(DataDefinition):
     """Used for passing data in-memory"""
     data: Optional[Union[dict, list]]
 
+
 class FileManagerConfig(BaseModel):
     """Used to make things a bit easier to maintain for the file mgr cli
     """
-    label:str
-    inventory_filename:str
-    folder:str = INTERNAL_DATA_DIR
-    load_on_init:bool=True
+    label: str
+    inventory_filename: str
+    folder: str = INTERNAL_DATA_DIR
+    load_on_init: bool = True
+
 
 class FileEntry(BaseModel):
     """Used for ScenarioResults"""
@@ -118,21 +124,21 @@ class CanTrackFiles(Protocol):
         tag: Optional[Union[str, list[str]]] = None
     ) -> list[FileDefinition]:
         ...
-    
-    def get_file_id(self, filename:str) -> str: ...
 
-    def report(self, tag:Optional[Union[str, list]]=None) -> None: ...
+    def get_file_id(self, filename: str) -> str: ...
+
+    def report(self, tag: Optional[Union[str, list]] = None) -> None: ...
 
     def register_file(
         self,
-        source_file:str,
+        source_file: str,
         encoding: FileEncodingTypes,
         metadata_file: Optional[str] = None,
         tags: Optional[Union[str, list[str]]] = None,
-        id:Optional[str] =None
+        id: Optional[str] = None
     ) -> str:
         ...
 
-    def retire_file(self, id:str) -> None: ...
+    def retire_file(self, id: str) -> None: ...
 
-    def get_file_definition(self, id:str) -> FileDefinition: ...
+    def get_file_definition(self, id: str) -> FileDefinition: ...

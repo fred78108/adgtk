@@ -1,49 +1,52 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
 [project]
 name = "adgtk"
-version = "0.2.0b2"
-authors = [
-  { name="Frederick Diehl", email="fdiehl@ualr.edu" },
-]
+version = "0.2.0"
+authors = [{ name = "Frederick Diehl", email = "fdiehl@ualr.edu" }]
 description = "A framework for researching automation of synthetic data generation."
 readme = "README.rst"
 requires-python = ">=3.12"
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
 ]
 dependencies = [
+  "datasets",
   "toml",
   "jinja2",
   "PyYAML",
   "pandas",
   "regex",
   "requests",
-  "anytree",  
-  "matplotlib", 
+  "anytree",
+  "matplotlib",
   "numpy",
   "prompt-toolkit",
   "pydantic",
-  "docstring-parser"
+  "docstring-parser",
 ]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["adgtk*"]
 
 [project.urls]
 Homepage = "https://github.com/fred78108/adgtk"
 Documentation = "https://adgtk.readthedocs.io/en/latest/"
 Issues = "https://github.com/fred78108/adgtk/issues"
 
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [tool.pytest.ini_options]
-pythonpath = [
-  "src"
-]
-addopts = [
-    "--import-mode=importlib", "--ignore=project_template",
-]
+pythonpath = ["src"]
+addopts = ["--import-mode=importlib", "--ignore=project_template"]
 
 [tool.mypy]
 pretty = true
@@ -51,32 +54,35 @@ check_untyped_defs = true
 
 
 [[tool.mypy.overrides]]
-module = [
-    "toml",
-    "yaml",
-    "jinja2"
-]
+module = ["toml", "yaml", "jinja2"]
 ignore_missing_imports = true
 
 
 [tool.tox]
 requires = ["tox>=4.23.2"]
-basepython = "python3.12.7"
-env_list = ["3.12.7", "type"]
+env_list = ["py312", "type", "lint"]
 
 [tool.tox.env_run_base]
-description = "Run test under {base_python}"
+description = "Run tests under {base_python}"
 deps = ["pytest"]
-commands = [["pytest"]]
+package = "wheel"
+commands = [["pytest", "{posargs}"]]
 
 [tool.tox.env.type]
 description = "run type check on code base"
 deps = ["mypy"]
-commands = [["mypy", "src", "--no-namespace-packages", "--ignore-missing-imports"]]
+commands = [
+  [
+    "mypy",
+    "src",
+    "--no-namespace-packages",
+    "--ignore-missing-imports",
+  ],
+]
 
 [tool.tox.env.lint]
 description = "run linter on code base"
-deps = ["flake8"]
+deps = ["flake8<7.0.0", "flake8-pyproject"]
 commands = [["flake8", "src"]]
 
 [project.scripts]
@@ -85,6 +91,17 @@ adgtk-ds = "adgtk.manager.ds_cli:main"
 # adgtk = "adgtk.management.cli:manager"
 # adgtk-plugin-wizard = "adgtk.management.cli:plugin_creator"
 
+
+[tool.flake8]
+per-file-ignores = [
+  "**/__init__.py:F401",
+  "**/test_*.py:E402,E501",
+  "**/experiment/runner.py:E402",
+  "**/factory/component.py:E402",
+  "**/manager/ds_cli.py:E402",
+  "**/manager/intro.py:E501",
+  "**/tracking/project.py:E402",
+]
 
 [tool.setuptools.package-data]
 adgtk = ["*.tar", "*.tar.gz"]

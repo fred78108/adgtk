@@ -34,15 +34,26 @@ class JsonFileTracker:
         inventory_file: str,
         logger: Optional[logging.Logger] = None
     ) -> None:
+        """Initializes the JsonFileTracker.
+
+        Args:
+            label: A label for the tracker instance (used in logging).
+            inventory_file: The file path to the JSON inventory.
+            logger: An optional logger instance. Defaults to a
+                module-level logger.
+        """
         self.label = label
         self.inventory_file = inventory_file
-        self._inventory = {}
-        self.logger = logger or logging.getLogger(__name__)        
+        self._inventory: dict[str, FileDefinition] = {}
+        self.logger = logger or logging.getLogger(__name__)
         self._load_from_disk()
 
     def _load_from_disk(self) -> None:
-        """Loads the inventory from disk. If it doesn't exist it creates it
-        in memory for a future save. The method expects JSON format.
+        """Loads the inventory from disk.
+
+        If the inventory file does not exist, an empty inventory is
+        initialized. The method expects the file to be in JSON format and
+        validates entries against the FileDefinition schema.
         """
         if os.path.exists(self.inventory_file):
             with open(self.inventory_file, "r", encoding="utf-8") as infile:
@@ -69,7 +80,10 @@ class JsonFileTracker:
             self._inventory = {}
 
     def _save_to_disk(self) -> None:
-        """Saves the inventory to disk in JSON format."""
+        """Saves the current inventory state to disk in JSON format.
+
+        Serializes FileDefinition objects using model_dump before writing.
+        """
         with open(self.inventory_file, "w", encoding="utf-8") as outfile:
             out_data = {}
             for id, entry in self._inventory.items():
@@ -85,14 +99,15 @@ class JsonFileTracker:
         self,
         tag: Optional[Union[str, list]] = None
     ) -> list[FileDefinition]:
-        """Provides a listing of files with the ability to filter based
-        on tags.
+        """Lists files in the inventory, optionally filtered by tags.
 
-        :param tag: The tag(s) to filter for, defaults to None
-        :type tag: Optional[Union[str, list]], optional
-        :raises ValueError: Corrupt inventory
-        :return: A list of file definitions that match the query
-        :rtype: list[FileDefinition]
+        Args:
+            tag: A single tag or a list of tags to filter for. All provided
+                tags must be present on the file for it to be included.
+                Defaults to None.
+
+        Returns:
+            A list of FileDefinition objects matching the filter criteria.
         """
 
         found: list[FileDefinition] = []
@@ -117,38 +132,42 @@ class JsonFileTracker:
                     if tag in file.tags:
                         found.append(file)
         return found
-    
+
     def get_file_ids_only(
         self,
         tag: Optional[Union[str, list]] = None
     ) -> list[str]:
+        """Retrieves only the file IDs from the inventory, optionally
+        filtered by tags.
+
+        Args:
+            tag: Tag or list of tags to filter by. Defaults to None.
+
+        Returns:
+            A list of strings representing the file IDs.
+        """
         files = self.list_files(tag=tag)
         return [file.file_id for file in files]
 
-
     def get_file_id(self, filename: str, path: Optional[str] = None) -> str:
-        """Retrieves the file_id for the file requested.
+        """Retrieves the file ID for a specific filename and path.
 
-        :param filename: The filename to search for
-        :type filename: str
-        :param path: The path override, defaults to None
-        :type path: Optional[str], optional
-        :raises ValueError: Corrupted inventory
-        :raises FileNotFoundError: No file found for the filename
-        :return: the file_id of the entry
-        :rtype: str
+        Args:
+            filename: The name of the file to search for.
+            path: The path associated with the file. Defaults to None.
+
+        Returns:
+            The file_id of the matching entry.
+
+        Raises:
+            ValueError: If the inventory is found to be corrupted.
+            FileNotFoundError: If no entry matches the filename and path.
         """
-
         file: FileDefinition
         for _, file in self._inventory.items():
             # ensure consistent format
-            if isinstance(file, FileDefinition):
-                pass
-            else:
-                try:
-                    file = FileDefinition(**file)
-                except ValidationError:
-                    raise ValueError("Corrupted inventory")
+            if not isinstance(file, FileDefinition):
+                file = FileDefinition(**file)
 
             if file.filename == filename and file.path == path:
                 return file.file_id
@@ -157,11 +176,11 @@ class JsonFileTracker:
 
     # TODO: refactor to provide better UI
     def report(self, tag: Optional[Union[str, list]] = None) -> None:
-        """Generates a report and prints to console of all the files that
-        are curently in the inventory.
+        """Generates and prints a formatted report of files in the inventory.
 
-        :param tag: The tag(s) to filter for, defaults to None
-        :type tag: Optional[Union[str, list]], optional
+        Args:
+            tag: Optional tag or list of tags to filter the report.
+                Defaults to None.
         """
 
         longest = 0
@@ -220,22 +239,23 @@ class JsonFileTracker:
         tags: Optional[Union[str, list[str]]] = None,
         id: Optional[str] = None
     ) -> str:
-        """Registers a file and if requested moves to internal data folder
+        """Registers a file in the tracker inventory.
 
-        :param source_file: The name of the file w/path
-        :type source_file: str
-        :param encoding: The encoding of the file
-        :type encoding: FileEncodingTypes
-        :param tags: The tags for this file, defaults to None
-        :type tags: Optional[list[str]], optional
-        :param id: The requested ID, defaults to None
-        :type id: Optional[str], optional
-        :raises FileNotFoundError: File is not found
-        :raises IndexError: The id already exists
-        :return: The id of the file saved
-        :rtype: str
+        Args:
+            source_file: The absolute or relative path to the file.
+            encoding: The encoding/format type of the file.
+            metadata_file: Optional path to a metadata file. Defaults to None.
+            tags: Optional tags to categorize the file. Defaults to None.
+            id: Optional explicit ID. If None, a UUID is generated.
+                Defaults to None.
+
+        Returns:
+            The ID assigned to the registered file.
+
+        Raises:
+            FileNotFoundError: If the source_file does not exist on disk.
+            IndexError: If the provided ID already exists in the inventory.
         """
-
         # Do we need to move the file?
         if not os.path.exists(source_file):
             raise FileNotFoundError(f"File must exist on disk: {source_file}.")
@@ -272,15 +292,13 @@ class JsonFileTracker:
         return id
 
     def retire_file(self, id: str) -> None:
-        """Removes a file from the inventory. If the file is stored in the
-        internal directory the file is moved to the .trash folder.
+        """Removes a file entry from the inventory.
 
-        :param id: The id of the file to retire
-        :type id: str
-        :raises IndexError: Unknown ID
-        :raises InvalidConfiguration: Corrupted data
-        :return: True if file retired
-        :rtype: bool
+        Args:
+            id: The ID of the file to retire.
+
+        Raises:
+            IndexError: If the ID is not found in the inventory.
         """
         if id not in self._inventory.keys():
             raise IndexError(f"Unknown ID: {id}")
@@ -292,30 +310,32 @@ class JsonFileTracker:
         self._save_to_disk()
 
     def get_file_definition(self, id: str) -> FileDefinition:
-        """Retrieves the file definition for an ID.
+        """Retrieves the file definition for a given ID.
 
-        :param id: The id of the file
-        :type id: str
-        :raises KeyError: Unable to fine the file ID
-        :return: The details associated with this file.
-        :rtype: FileDefinition
+        Args:
+            id: The ID of the file.
+
+        Returns:
+            A copy of the FileDefinition associated with the ID.
+
+        Raises:
+            KeyError: If the file ID is not found.
         """
-
         if id in self._inventory.keys():
             return self._inventory[id].model_copy()
 
         msg = f"Unable to find file id {id}"
         raise KeyError(msg)
 
-    def file_id_exists(self, id:str) -> bool:
-        """An easy method to verify an id exists.
+    def file_id_exists(self, id: str) -> bool:
+        """Verifies if a specific ID exists in the inventory.
 
-        :param id: The ID to check
-        :type id: str
-        :return: True if a valid ID in the system.
-        :rtype: bool
+        Args:
+            id: The ID to check.
+
+        Returns:
+            True if the ID exists in the system, False otherwise.
         """
-
         if id in self._inventory.keys():
             return True
         return False

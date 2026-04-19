@@ -34,7 +34,7 @@ AttributeValueType = Union["AttributeEntry", dict, list, str, bool, float, int]
 
 class AttributeEntry(BaseModel):
     """Enables the runner to know how to load the data."""
-    attribute: str    
+    attribute: str
     factory_id: Optional[str] = None
     factory_init: bool = False
     init_config: Optional[
@@ -45,9 +45,16 @@ class AttributeEntry(BaseModel):
             str,
             "AttributeEntry",
             dict,
-            list["AttributeEntry"]]
-            ] = None
-    
+            list["AttributeEntry"],
+            list[str],
+            list[int],
+            list[float],
+            list[bool],
+            list[dict],
+        ]
+    ] = None
+
+
 AttributeEntry.model_rebuild()  # str to Type AttributeEntry for Union
 
 
@@ -55,12 +62,14 @@ class ExperimentDefinition(AttributeEntry):
     """The root of any experiment has two extra items the name and
     description. This allows for easy management and prediction of what
     to expect on load."""
-    name:str
+    name: str
     description: str
 
+
 class BatchDefinition(BaseModel):
-    name:str
+    name: str
     experiments: list[str]
+
 
 class ScenarioResults(BaseModel):
     """The results of an experiment"""
@@ -81,8 +90,8 @@ class ScenarioProtocol(Protocol):
     """Defines a scenario"""
     def run_scenario(
         self,
-        result_folders:ExperimentRunFolders
-    ) -> ScenarioResults: # type: ignore
+        result_folders: ExperimentRunFolders
+    ) -> ScenarioResults:  # type: ignore
         """Runs the scenario as defined"""
 
 

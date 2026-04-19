@@ -58,10 +58,8 @@ from adgtk.factory.structure import (
 )
 from pydantic import ValidationError
 from typing import (
-    cast,
     Callable,
     Optional,
-    Type,
     Union)
 import secrets
 import inspect
@@ -90,7 +88,17 @@ _groups: list[str] = []                   # only grows, consider dict[str,int]
 # Decorator
 # ----------------------------------------------------------------------
 def register_to_factory(cls):
-    """A decorator for registration to the factory"""
+    """A decorator for registration to the factory.
+
+    Args:
+        cls: The class to be registered. Must be a subclass of SupportsFactory.
+
+    Returns:
+        The registered class.
+
+    Raises:
+        ValueError: If the class does not inherit from SupportsFactory.
+    """
     if issubclass(cls, SupportsFactory):
         register(
             item=cls,
@@ -120,30 +128,30 @@ def register(
     interview_blueprint: Optional[list[BlueprintQuestion]] = None,
     factory_can_init: Optional[bool] = None
 ) -> str:
-    """Registers an item into the factory.
+    """Registers an item into the factory inventory.
 
-    :param item: The callable item
-    :type item: Union[Callable, SupportsFactory]
-    :param group: the group name if not SupportsFactory. Required if
-        item is not SupportsFactory. If SupportsFactory it overrides
-        the item value for the group. defaults to None
-    :type group: Optional[str], optional
-    :param tags: tags for searching the factory, defaults to None
-    :type tags: Optional[list], optional
-    :param factory_id: The id for the factory, defaults to None
-    :type factory_id: Optional[str], optional
-    :param summary: The summary for listings, defaults to "No summary recorded"
-    :type summary: str, optional
-    :param interview_blueprint: The questions to ask for experiment
-        definitions, defaults to None
-    :type interview_blueprint: Optional[list[BlueprintQuestion]], optional
-    :raises ValueError: Invalid request, failure to process, etc    
-    :raises IndexError: Entry already exists
-    :return: The factory id now entered into the factory
-    :rtype: str
+    Args:
+        item: The callable item or a class inheriting from SupportsFactory.
+        group: The group name. Required if item is not a SupportsFactory.
+            If item is a SupportsFactory, this overrides the item's
+            default group.
+        tags: Tags for searching the factory. Defaults to None.
+        factory_id: The identifier for the factory entry. If None, it uses
+            item.factory_id or generates a random temporary ID.
+        summary: A brief summary for listings.
+            Defaults to "No summary recorded".
+        interview_blueprint: Questions to ask for experiment definitions.
+            Defaults to None.
+        factory_can_init: Whether the factory can initialize the item. If None,
+            it is determined based on the item type.
+
+    Returns:
+        The factory ID used for registration.
+
+    Raises:
+        ValueError: If the item is not callable or the factory_id is invalid.
+        IndexError: If the factory_id already exists in the inventory.
     """
-    global _inventory, _groups
-
     # set the factory_can_init
     if factory_can_init is None:
         # If not set then check, if not SupportsFactory then false
@@ -218,19 +226,27 @@ def register(
 
 
 def create_using_order(order: FactoryOrder) -> SupportsFactory:
-    """Creates an object using a FactoryOrder. This provides an easier
-    interface for Scenario loading, etc. This does not work for fetching
-    a callable.
+    """Creates an object using a FactoryOrder structure.
 
-    :param order: The order to process
-    :type order: FactoryOrder
-    :return: The resulting object with the values set in the init_args
-    :rtype: T
+    Provides a simplified interface for Scenario loading and structured
+    component instantiation. This is not intended for fetching uninitialized
+    callables.
+
+    Args:
+        order: The FactoryOrder containing the factory_id and initialization
+            arguments.
+
+    Returns:
+        The instantiated object.
+
+    Raises:
+        ValidationError: If the order does not conform to the
+        FactoryOrder model.
     """
     if not isinstance(order, FactoryOrder):
         try:
             order = FactoryOrder(**order)
-        except ValidationError as e:
+        except ValidationError:
             _logger.error("Invalid order submitted")
             raise
 
@@ -243,16 +259,19 @@ def create_using_order(order: FactoryOrder) -> SupportsFactory:
 
 
 def create(factory_id: str, **kwargs) -> SupportsFactory:
-    """Creates an instance of the item
+    """Creates an instance of an item from the factory inventory.
 
-    :param factory_id: The id to create
-    :type factory_id: str
-    :raises KeyError: Unable to find in the factory
-    :return: An instance of the factory item
-    :rtype: T
+    Args:
+        factory_id: The ID of the item to instantiate.
+        **kwargs: Arbitrary keyword arguments passed to the item's constructor.
+
+    Returns:
+        An instance of the registered factory item.
+
+    Raises:
+        KeyError: If the factory_id is not found in the inventory.
+        ValueError: If the item is marked as not supporting initialization.
     """
-    global _inventory
-
     if factory_id not in _inventory:
         msg = f"{factory_id} not in factory"
         _logger.error(msg)
@@ -271,14 +290,16 @@ def create(factory_id: str, **kwargs) -> SupportsFactory:
 
 
 def get_interview(factory_id: str) -> list[BlueprintQuestion]:
-    """Provides an interview for a factory item based on the
-    data provided at registration
+    """Retrieves the interview blueprint for a factory item.
 
-    :param factory_id: The id to obtain the interview for
-    :type factory_id: str
-    :raises KeyError: Unable to find the id in the factory
-    :return: The interview
-    :rtype: list[BlueprintQuestion]
+    Args:
+        factory_id: The ID of the item to retrieve the interview for.
+
+    Returns:
+        A list of BlueprintQuestion objects.
+
+    Raises:
+        KeyError: If the factory_id is not found in the inventory.
     """
     if factory_id not in _inventory:
         msg = f"{factory_id} not in factory"
@@ -290,16 +311,18 @@ def get_interview(factory_id: str) -> list[BlueprintQuestion]:
 
 
 def get_callable(factory_id: str) -> Callable:
-    """Returns a callable. It does not attempt to initialize.
+    """Returns the underlying callable from the factory without
+    initializing it.
 
-    :param factory_id: The id of the item to fetch
-    :type factory_id: str
-    :raises KeyError: Unable to find the factory id
-    :return: a callable object, ex function. does not invoke
-    :rtype: Callable
+    Args:
+        factory_id: The ID of the item to fetch.
+
+    Returns:
+        The registered callable (e.g., function or class constructor).
+
+    Raises:
+        KeyError: If the factory_id is not found in the inventory.
     """
-    global _inventory
-
     if factory_id not in _inventory:
         msg = f"{factory_id} not in factory"
         _logger.error(msg)
@@ -310,16 +333,15 @@ def get_callable(factory_id: str) -> Callable:
 
 
 def remove(factory_id: str) -> None:
-    """Removes an item from the factory
+    """Removes an item from the factory inventory.
 
-    :param factory_id: The id of the item to remove
-    :type factory_id: str
-    :raises KeyError: Unable to locate id
+    Args:
+        factory_id: The ID of the item to remove.
+
+    Raises:
+        KeyError: If the factory_id is not found in the inventory.
     """
-
-    global _inventory
-
-    if not factory_id in _inventory.keys():
+    if factory_id not in _inventory.keys():
         msg = f"{factory_id} not in factory"
         _logger.error(msg)
         raise KeyError(msg)
@@ -332,18 +354,19 @@ def list_entries(
     tags: Optional[Union[str, list[str]]] = None,
     group: Optional[str] = None
 ) -> list:
-    """Lists the entries within the factory
+    """Lists the entries within the factory inventory, optionally filtered.
 
-    :param tags: Filter on tag(s), defaults to None
-    :type tags: Optional[Union[str, list[str]]], optional
-    :param group: Filter on a group, defaults to None
-    :type group: Optional[str], optional
-    :raises ValueError: Corruption of the inventory
-    :return: A list of entries that match the search
-    :rtype: list
+    Args:
+        tags: A single tag or list of tags to filter by. Entries must contain
+            all provided tags. Defaults to None.
+        group: A specific group name to filter by. Defaults to None.
+
+    Returns:
+        A list of FactoryEntry objects that match the search criteria.
+
+    Raises:
+        ValueError: If the inventory appears to be corrupted.
     """
-    global _inventory
-
     found: list[FactoryEntry] = []
     entry: FactoryEntry
 
@@ -387,14 +410,13 @@ def report(
     tags: Optional[Union[str, list[str]]] = None,
     group: Optional[str] = None
 ) -> None:
-    """Generates a report and prints to console of all the files that
-    are curently in the inventory.
+    """Generates and prints a formatted report of factory entries to
+    the console.
 
-    :param tags: The tags to filter for, defaults to None
-    :type tags: Optional[Union[str, list]], optional
+    Args:
+        tags: Filter report entries by specific tags. Defaults to None.
+        group: Filter report entries by a specific group. Defaults to None.
     """
-    global _groups
-
     title = "Factory report"
     if group is not None:
         title += f" - group={group}"
@@ -463,13 +485,33 @@ def report(
 
 
 def entry_exists(factory_id: str) -> bool:
+    """Checks if a factory ID exists in the inventory.
 
+    Args:
+        factory_id: The factory ID to check.
+
+    Returns:
+        True if the ID exists, False otherwise.
+    """
     return factory_id in _inventory
 
 
 def group_exists(group: str) -> bool:
+    """Checks if a group exists in the factory.
+
+    Args:
+        group: The group name to check.
+
+    Returns:
+        True if the group exists, False otherwise.
+    """
     return group in _groups
 
 
 def get_group_names() -> list:
+    """Returns a list of all registered group names.
+
+    Returns:
+        A list of strings representing group names.
+    """
     return copy.deepcopy(_groups)

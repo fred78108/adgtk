@@ -25,7 +25,7 @@ def foundation():
 def builtin():
     \"""these are optional components that can be removed if desired.\"""
     factory.register(HelloWorldScenario)
-    
+
 def user_code():
     pass
     # factory.register()

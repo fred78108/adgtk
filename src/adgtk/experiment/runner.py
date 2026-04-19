@@ -77,13 +77,13 @@ _logger: Optional[Logger] = None
 
 
 def _contains_blueprint_dir(path: str) -> bool:
-    """helps confirm how to format the filename by checking a string for
-    whether the path contains the experiment directory "blueprints"
+    """Checks if the path contains the experiment blueprints directory.
 
-    :param path: The path to inspect
-    :type path: str
-    :return: True if the path already points to the blueprints folder
-    :rtype: bool
+    Args:
+        path: The path to inspect.
+
+    Returns:
+        True if the path contains the blueprints directory, False otherwise.
     """
 
     # Normalize path to avoid issues with slashes
@@ -92,13 +92,13 @@ def _contains_blueprint_dir(path: str) -> bool:
 
 
 def _contains_batch_dir(path: str) -> bool:
-    """helps confirm how to format the filename by checking a string for
-    whether the path contains the experiment directory "batch"
+    """Checks if the path contains the batch directory.
 
-    :param path: The path to inspect
-    :type path: str
-    :return: True if the path already points to the batch folder
-    :rtype: bool
+    Args:
+        path: The path to inspect.
+
+    Returns:
+        True if the path contains the batch directory, False otherwise.
     """
     parts = os.path.normpath(path).split(os.sep)
     return BATCH_DEF_DIR in parts
@@ -107,20 +107,24 @@ def _contains_batch_dir(path: str) -> bool:
 def _build_component(
     attribute_def: AttributeEntry,
 ) -> BuildComponentResult:
-    """Builds a component. This is designed to be recursive.
+    """Builds a component recursively based on the attribute definition.
 
-    :param attribute_def: The configuration to build
-    :type attribute_def: AttributeEntry
-    :raises ValueError: Occurs when unexpected combinations occur
-    :return: At the root its Callable, else its an argument.
-    :rtype: Union[Callable, float, bool, str, int, list, None]
+    Args:
+        attribute_def: The configuration entry to build.
+
+    Returns:
+        The built component. At the root, it is usually a Callable (Scenario);
+        otherwise, it returns primitive types or lists.
+
+    Raises:
+        ValueError: If the entry type is invalid or the definition is corrupt.
     """
 
     # setup
     if isinstance(attribute_def, dict):
         try:
             attribute_def = AttributeEntry(**attribute_def)
-        except:
+        except Exception:
             msg = f"Invalid enty type: {attribute_def}"
             if _logger is not None:
                 _logger.error(msg)
@@ -140,13 +144,16 @@ def _build_component(
             msg = f"Corrupt definition: {attribute_def}"
             raise ValueError(msg)
 
-    # 1.5 if factory does not init
+    # 1.5 A list[str], list[bool], etc
     factory_id = attribute_def.factory_id
     if factory_id is None:
-        msg = f"Corrupt definition: {attribute_def}"
-        if _logger is not None:
-            _logger.info(msg)
-        raise ValueError(msg)
+        # its not a factory id. so. prepare as-is
+        # TODO: do better at typing.
+        return attribute_def.init_config    # type: ignore
+        # msg = f"Corrupt definition: {attribute_def}"
+        # if _logger is not None:
+        #     _logger.info(msg)
+        # raise ValueError(msg)
 
     if not attribute_def.factory_init:
         msg = f"Getting creator not init for {factory_id}"
@@ -196,14 +203,17 @@ def _build_component(
 
 def _load_scenario(
         exp_config: ExperimentDefinition) -> ScenarioProtocol:
-    """A specialized helper function that performs safety checks before
-    using the _build_component to build out the scenario.
+    """Loads a scenario after performing structural safety checks.
 
-    :param exp_config: The configuration to load
-    :type exp_config: ExperimentDefinition
-    :raises ValueError: Unexpected values for the configuration
-    :return: A created scenario
-    :rtype: Callable
+    Args:
+        exp_config: The experiment definition to load.
+
+    Returns:
+        An instantiated scenario object implementing the ScenarioProtocol.
+
+    Raises:
+        ValueError: If the definition is invalid or if the built object
+            fails to implement ScenarioProtocol.
     """
 
     # Safety checks
@@ -211,7 +221,7 @@ def _load_scenario(
         try:
             exp_config = ExperimentDefinition(**exp_config)
         except ValidationError:
-            msg = "Invalid experiment definition"            
+            msg = "Invalid experiment definition"
             raise ValueError(msg)
 
     scenario_config = exp_config.init_config
@@ -247,12 +257,16 @@ def _load_scenario(
 
 
 def _load_experiment_file(filename: str) -> ExperimentDefinition:
-    """loads an experiment file
+    """Loads and validates an experiment definition from a YAML file.
 
-    :param filename: The file to load
-    :type filename: str
-    :return: the configuration needed to build the experiment.
-    :rtype: ExperimentDefinition
+    Args:
+        filename: The name or path of the YAML file to load.
+
+    Returns:
+        A validated ExperimentDefinition object.
+
+    Raises:
+        ValueError: If the YAML file is malformed.
     """
     # get config
     if not _contains_blueprint_dir(filename):
@@ -285,12 +299,14 @@ def _load_experiment_file(filename: str) -> ExperimentDefinition:
 
 
 def _select_experiment() -> str:
-    """Interacts with a user to determine which experiment to run
+    """Displays available experiments and prompts the user for a selection.
 
-    :raises ValueError: Unexpected type. Internal processing failure
-    :raises RuntimeError: Internal processing failure
-    :return: the filename for the experiment to run
-    :rtype: str
+    Returns:
+        The name of the selected experiment.
+
+    Raises:
+        ValueError: If there is an unexpected type encountered during listing.
+        RuntimeError: If the selection process fails.
     """
     choices = []
     idx_to_choice_map = []
@@ -354,13 +370,14 @@ def _save_copy_of_config(
     config: Union[ExperimentDefinition, dict],
     root_dir: str
 ) -> None:
-    """Saves a copy of the configuration to the root of the run dir
+    """Saves a copy of the experiment configuration to the run directory.
 
-    :param config: The configuration of the experiment being run
-    :type config: Union[ExperimentDefinition, dict]
-    :param root_dir: The root directory of the run
-    :type root_dir: str
-    :raises FileNotFoundError: The root_dir is not found
+    Args:
+        config: The configuration object or dictionary.
+        root_dir: The destination directory for the configuration copy.
+
+    Raises:
+        FileNotFoundError: If the root_dir does not exist.
     """
     if not os.path.exists(root_dir):
         raise FileNotFoundError(root_dir)
@@ -379,22 +396,25 @@ def _save_copy_of_config(
 # Design detail: Only the public can set the _logger. This helps ensure
 # a consistent behavior with the logger.
 
-# TODO: update docstring
 def run_scenario(
     filename: Optional[str] = None,
-    append_timestamp:bool=False,
-    use_count:bool=True,
-    print_to_console:bool = True
+    append_timestamp: bool = False,
+    use_count: bool = True,
+    print_to_console: bool = True
 ) -> tuple[ScenarioResults, ExperimentRunFolders]:
-    """runs a scenario based on the definition within a file
+    """Executes a scenario based on an experiment definition file.
 
-    :param filename: The file to load
-    :type filename: str
-    :return: The run results and where to find them
-    :rtype: tuple[ScenarioResults, ExperimentRunFolders]
+    Args:
+        filename: The experiment file to load. If None, triggers UX selection.
+        append_timestamp: Whether to include a timestamp in the run ID.
+        use_count: Whether to use an incremental integer for the run ID.
+        print_to_console: Whether to log output to the console.
+
+    Returns:
+        A tuple containing the ScenarioResults and the ExperimentRunFolders.
     """
-    global _logger    
-    exp_journal.reset() # cover any batch processing
+    global _logger
+    exp_journal.reset()  # cover any batch processing
     if filename is None:
         exp_name = _select_experiment()
         exp_name += ".yaml"
@@ -449,18 +469,19 @@ def run_scenario(
     results_file_w_path = os.path.join(folders.conclusion, RESULTS_FILE)
 
     with open(file=results_file_w_path, mode="w", encoding="utf-8") as outfile:
-        yaml.safe_dump(result.model_dump(), outfile)    
+        yaml.safe_dump(result.model_dump(), outfile)
     return (result, folders)
 
 
-def run_batch(filename: str, print_to_console:bool = True) -> None:
-    """Runs a batch of experiments. 
+def run_batch(filename: str, print_to_console: bool = True) -> None:
+    """Executes a series of experiments defined in a batch file.
 
-    Future: Consider building a selector for batches
+    Args:
+        filename: The path to the batch YAML configuration.
+        print_to_console: Whether to log output to the console.
 
-    :param filename: The filename to load
-    :type filename: str
-    :raises FileNotFoundError: unable to locate batch file
+    Raises:
+        FileNotFoundError: If the batch file cannot be located.
     """
     global _logger
     if _logger is None:
@@ -507,5 +528,5 @@ def run_batch(filename: str, print_to_console:bool = True) -> None:
                      experiment,
                      idx,
                      len(batch.experiments))
-        
+
         _ = run_scenario(filename=experiment)

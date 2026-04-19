@@ -3,14 +3,14 @@
 # pyright: reportFunctionMemberAccess=false
 
 """test_builder.py
-Automated tests for adgtk.experiment.builder, fully mocked to require no human interaction.
+Automated tests for adgtk.experiment.builder, fully mocked to require no
+human interaction.
 
 Note: original coding via a model. modified to meet my needs.
 
-Testing
-=======
-- with prints from builder: pytest -s test/experiment/test_builder.py
-- no prints from builder: pytest test/experiment/test_builder.py
+Testing:
+    - with prints: pytest -s test/experiment/test_builder.py
+    - no prints: pytest test/experiment/test_builder.py
 """
 import os
 import pytest       # type: ignore
@@ -25,12 +25,21 @@ from adgtk.factory.structure import BlueprintQuestion
 # ----------------------------------------------------------------------
 
 class DummyEntry:
+    """A dummy entry class for mocking factory objects."""
+
     def __init__(self, factory_id, summary):
+        """Initializes a DummyEntry.
+
+        Args:
+            factory_id (str): The factory identifier.
+            summary (str): A brief summary of the entry.
+        """
         self.factory_id = factory_id
         self.summary = summary
 
 @pytest.fixture
 def mock_factory(monkeypatch):
+    """Pytest fixture to mock the component factory."""
     factory_mock = MagicMock()
     entries = [
         DummyEntry(factory_id="f1", summary="First"),
@@ -41,6 +50,7 @@ def mock_factory(monkeypatch):
     factory_mock.group_exists.side_effect = lambda x: x in {"scenario"}
 
     def interview_stub(factory_id):
+        """Stub for providing an interview blueprint based on factory_id."""
         if factory_id == "f1":
             return [
                 BlueprintQuestion(
@@ -57,7 +67,7 @@ def mock_factory(monkeypatch):
 
 @pytest.fixture
 def mock_input(monkeypatch):
-    """This is the sequence of answers to simulate."""
+    """Pytest fixture to simulate a sequence of user answers."""
     answers = iter([
         "yes",                # automatically create name?
         "test",               # prefix of name
@@ -72,6 +82,7 @@ def mock_input(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def reset_working_on():
+    """Pytest fixture to clear the builder's state before and after tests."""
     builder._working_on.clear()
     yield
     builder._working_on.clear()
@@ -84,9 +95,10 @@ def reset_working_on():
 def _cleanup_tracking_folder(tracking_dir: str = ".tracking") -> None:
     """Removes the .tracking directory if it exists.
 
-    :param tracking_dir: Path to the tracking directory
-    :type tracking_dir: str
+    Args:
+        tracking_dir (str): Path to the tracking directory.
     """
+
     if os.path.exists(tracking_dir) and os.path.isdir(tracking_dir):
         try:
             shutil.rmtree(tracking_dir)
@@ -100,6 +112,7 @@ def _cleanup_tracking_folder(tracking_dir: str = ".tracking") -> None:
 
 
 def test_get_user_selection_from_group_valid(mock_factory, monkeypatch, capsys):
+    """Test valid user selection by index from a group."""
     monkeypatch.setattr(
         "adgtk.experiment.builder.get_user_input", lambda **_: "0")
     result = builder._get_user_selection_from_group(
@@ -113,6 +126,7 @@ def test_get_user_selection_from_group_invalid_index(
     monkeypatch,
     capsys
 ):
+    """Test selection of the second available entry by index."""
     monkeypatch.setattr(
         "adgtk.experiment.builder.get_user_input", lambda **_: "1")
     result = builder._get_user_selection_from_group(
@@ -126,7 +140,9 @@ def test_get_user_selection_from_group_invalid_value(
     monkeypatch,
     capsys
 ):
-    monkeypatch.setattr("adgtk.experiment.builder.get_user_input", lambda **_: "bad_input")
+    """Test that invalid input raises a ValueError."""
+    monkeypatch.setattr(
+        "adgtk.experiment.builder.get_user_input", lambda **_: "bad_input")
     with pytest.raises(ValueError):
         builder._get_user_selection_from_group(
             group="test_group", user_prompt="Pick one"
@@ -134,6 +150,7 @@ def test_get_user_selection_from_group_invalid_value(
 
 
 def test_perform_interview_str(monkeypatch, mock_factory, capsys):
+    """Test the interview process for a string entry type."""
     question = MagicMock(
         entry_type="str",
         attribute="foo",
@@ -142,13 +159,16 @@ def test_perform_interview_str(monkeypatch, mock_factory, capsys):
         group=None
     )
     builder._working_on = ["f1"]
-    monkeypatch.setattr("adgtk.experiment.builder.get_user_input", lambda **kwargs: "bar_value")
+    monkeypatch.setattr(
+        "adgtk.experiment.builder.get_user_input",
+        lambda **kwargs: "bar_value")
     attrs = builder._perform_interview([question])
     assert attrs[0].attribute == "foo"
     assert attrs[0].init_config == "bar_value"
 
 
 def test_expand_with_interview(monkeypatch, mock_factory, capsys):
+    """Test attribute expansion when an interview blueprint is present."""
     builder._working_on = []
     monkeypatch.setattr(
         "adgtk.experiment.builder.get_user_input", lambda **kwargs: "baz_value")
@@ -161,6 +181,7 @@ def test_expand_with_interview(monkeypatch, mock_factory, capsys):
 
 
 def test_expand_with_no_interview(monkeypatch, mock_factory, capsys):
+    """Test attribute expansion when no interview is required."""
     mock_factory.get_interview.side_effect = lambda factory_id: []
     builder._working_on = []
     result = builder._expand("f1", "no_questions")
@@ -176,7 +197,7 @@ def test_build_experiment(
     tmp_path,
     capsys
 ):
-
+    """Integration test for building a full experiment definition."""
     # Patch open to write to a temp file, so we don't hit the real file system
     out_file = tmp_path / "test.yaml"
     out_file_str = str(out_file)

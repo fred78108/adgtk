@@ -51,8 +51,18 @@ CONCLUSION = "conclusions"
 
 
 def _build_run_dirs(root_dir: str, experiment_name) -> ExperimentRunFolders:
+    """Constructs the folder structure for a specific experiment run.
+
+    Args:
+        root_dir (str): The root directory of the experiment run.
+        experiment_name (str): The name of the experiment.
+
+    Returns:
+        ExperimentRunFolders: An object containing the paths to all
+            subdirectories.
+    """
     _logger.info("Building run folders at %s", root_dir)
-    
+
     return ExperimentRunFolders(
         datasets=os.path.join(root_dir, EXP_DATASET_FOLDER),
         metrics=os.path.join(root_dir, EXP_METRICS_FOLDER),
@@ -69,6 +79,16 @@ def _build_run_dirs(root_dir: str, experiment_name) -> ExperimentRunFolders:
 
 
 def _get_run_dir(experiment_name: str, run_id: str, build: bool = True) -> str:
+    """Determines the directory path for a specific experiment run.
+
+    Args:
+        experiment_name (str): The name of the experiment.
+        run_id (str): The unique identifier for the run.
+        build (bool): Whether to create the directories if they don't exist.
+
+    Returns:
+        str: The path to the run directory.
+    """
 
     # Experiment
     exp_folder = os.path.join(EXP_RESULTS_FOLDER, experiment_name)
@@ -92,24 +112,32 @@ def collect_batch_results(exp_prefix: str, results_dir: str) -> list:
     """Retrieves the results and the configuration of an experiment and
     puts it into a dictionary for processing.
 
-    :param experiment_name: The name of the experiment
-    :type experiment_name: str
-    :return: a tuple of filename and a dict that contains results
-    :rtype: dict
+    Args:
+        exp_prefix (str): The prefix of the experiment names to collect.
+        results_dir (str): The directory where results are stored.
+
+    Returns:
+        list: A list of results.
+
+    Raises:
+        NotImplementedError: This function requires an update.
     """
     raise NotImplementedError("collect_batch_results() requires an update")
-    experiments = os.listdir(results_dir)
-    results = []
+    # experiments = os.listdir(results_dir)
+    # results = []
     # for experiment in experiments:
     #     if experiment.startswith(exp_prefix):
     #         folder_manager = ExperimentFolderManager(experiment)
     #         results.append((experiment, folder_manager.collect_results()))
-
-    return results
+    # return results
 
 
 def build_project_folders(base_path: str = ""):
-    """Builds all the required folders for a project."""
+    """Builds all the required folders for a project.
+
+    Args:
+        base_path (str): The root path of the project.
+    """
     def make_dir(path):
         full_path = os.path.join(base_path, path) if base_path else path
         os.makedirs(full_path, exist_ok=True)
@@ -128,28 +156,30 @@ def build_folder_listing(
     """Verifies the folders exist and returns an easy to use object for
     use within different code bases.
 
-    :param experiment_name: The experiment name
-    :type experiment_name: str
-    :param run_id: The id of the individual run
-    :type run_id: str
-    :return: a Pydantic Model that provides ease of use
-    :rtype: ExperimentRunFolders
+    Args:
+        experiment_name (str): The experiment name.
+        run_id (str): The id of the individual run.
+
+    Returns:
+        ExperimentRunFolders: A model providing easy access to run paths.
+
+    Raises:
+        FileNotFoundError: If required folders are missing.
     """
     root_dir = _get_run_dir(
         experiment_name=experiment_name, run_id=run_id, build=False)
-    
+
     exp_dir_listing = _build_run_dirs(
         root_dir=root_dir,
         experiment_name=experiment_name)
     folders = exp_dir_listing.to_dict()
     missing = False
     for key, dir in folders.items():
-        if not os.path.exists(dir) and not key == "experiment_name" \
-            and key == "common":
-            msg = f"missing folder: {dir}"
-            _logger.info(msg)
-            missing = True
-
+        if not os.path.exists(dir) and not key == "experiment_name":
+            if key == "common":
+                msg = f"missing folder: {dir}"
+                _logger.info(msg)
+                missing = True
     if missing:
         raise FileNotFoundError("Missing one or more folders. Check log.")
     return exp_dir_listing
@@ -158,13 +188,12 @@ def build_folder_listing(
 def setup_run(experiment_name: str, run_id: str) -> ExperimentRunFolders:
     """Creates all the required folders for results of an experiment run
 
-    :param experiment_name: The name of the experiment
-    :type experiment_name: str
-    :param run_id: The unique idenfier of a run of an experiment
-    :type run_id: str
-    :return: An easy to use object for referring to different folders
-        for the run such as the datasets folder.
-    :rtype: ExperimentRunFolders
+    Args:
+        experiment_name (str): The name of the experiment.
+        run_id (str): The unique identifier of a run of an experiment.
+
+    Returns:
+        ExperimentRunFolders: An object for referring to different folders.
     """
     # ensure results folder exists
     root_dir = _get_run_dir(
@@ -176,7 +205,7 @@ def setup_run(experiment_name: str, run_id: str) -> ExperimentRunFolders:
     folders = exp_dir_listing.to_dict()
     # Builds the subfolders, etc.
     for key, folder in folders.items():
-        if key != "experiment_name" :
+        if key != "experiment_name":
             os.makedirs(folder, exist_ok=True)
 
     # now verify and create ExperimentRunFolders

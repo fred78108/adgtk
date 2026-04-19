@@ -14,17 +14,18 @@ from adgtk.tracking.structure import CommentModel
 
 # data
 _files_written: list[FileEntry] = []
-_comments:list[CommentModel] = []
+_comments: list[CommentModel] = []
 
 # ----------------------------------------------------------------------
 # Helper functions
 # ----------------------------------------------------------------------
 
-def _get_components() ->set[str]:
-    """Obtains a listing (via a set) of the components recorded.
 
-    :return: A set of the components within the comments
-    :rtype: set[str]
+def _get_components() -> set[str]:
+    """Obtains a listing of the unique components recorded in comments.
+
+    Returns:
+        set[str]: A set of component names found in the comments.
     """
     found = []
     for entry in _comments:
@@ -38,8 +39,10 @@ def _get_components() ->set[str]:
 # ----------------------------------------------------------------------
 
 def reset() -> None:
-    """Resets the journal tracking. primary purpose would be when doing
-    batch processing and you have multiple scenarios.
+    """Resets the journal tracking.
+
+    The primary purpose is for batch processing where multiple scenarios
+    are executed.
     """
     global _files_written
     global _comments
@@ -47,30 +50,31 @@ def reset() -> None:
     _comments = []
 
 
-def add_file(filename:str, purpose:PurposeTypes) -> None:
-    """Writes a file save to the journal
+def add_file(filename: str, purpose: PurposeTypes) -> None:
+    """Records a file entry in the journal.
 
     Args:
-        filename (str): _description_
-        purpose (PurposeTypes): _description_
+        filename (str): The name of the file to record.
+        purpose (PurposeTypes): The intended purpose of the file.
     """
     file = FileEntry(filename=filename, purpose=purpose)
     if file not in _files_written:
         _files_written.append(file)
 
-def add_comment(
-    comment:str,
-    use_timestamp:bool=True,
-    component:Optional[str]=None
-) -> None:
-    """Adds a comment to the journal
 
-    :param comment: The comment to add
-    :type comment: str
-    :param use_timestamp: include timestamp in the statement, defaults to True
-    :type use_timestamp: bool, optional
-    :param component: a component tag, defaults to None
-    :type component: Optional[str], optional
+def add_comment(
+    comment: str,
+    use_timestamp: bool = True,
+    component: Optional[str] = None
+) -> None:
+    """Adds a comment to the journal.
+
+    Args:
+        comment (str): The comment string to add.
+        use_timestamp (bool, optional): Whether to include a timestamp.
+            Defaults to True.
+        component (str, optional): An optional component tag for the
+            comment. Defaults to None.
     """
     now = None
     if use_timestamp:
@@ -86,13 +90,13 @@ def add_comment(
         _comments.append(entry)
 
 
-def save_journal(path:str, filename:str="journal.json") -> None:
-    """Saves the journal to disk as a json file.
+def save_journal(path: str, filename: str = "journal.json") -> None:
+    """Saves the journal to disk as a JSON file.
 
-    :param path: the path for where to write
-    :type path: str
-    :param filename: The filename to use, defaults to "journal.json"
-    :type filename: str, optional
+    Args:
+        path (str): The directory path where the journal will be saved.
+        filename (str, optional): The filename for the journal.
+            Defaults to "journal.json".
     """
 
     file_w_path = os.path.join(path, filename)
@@ -104,28 +108,30 @@ def save_journal(path:str, filename:str="journal.json") -> None:
     }
     # Now write to JSON
     with open(file=file_w_path, mode='w', encoding="utf-8") as outfile:
-        json.dump(files_as_dicts, outfile, indent=2)
+        json.dump(data, outfile, indent=2)
+
 
 def generate_report(
-    path:str,
-    experiment_name:str,
-    filename:str="report.html"
+    path: str,
+    experiment_name: str,
+    filename: str = "report.html"
 ) -> None:
-    """Generates a report. This is more a human readable version. The
-    save_journal and its json is the truly the target for an Agent to
-    use for review of the experiment.
+    """Generates a human-readable report of the journal.
 
-    :param path: The path on where to write the report
-    :type path: str
-    :param The name of the experiment: _description_
-    :type experiment_name: str
-    :param filename: The filename to use, defaults to "report.html"
-    :type filename: str, optional
+    The primary target for agent review is the JSON output from
+    save_journal.
+
+    Args:
+        path (str): The directory path where the report will be written.
+        experiment_name (str): The name of the experiment.
+        filename (str, optional): The filename for the report.
+            Defaults to "report.html".
     """
-    components = _get_components()
+    pass
+    # components = _get_components()
+    # TODO: need to refactor and introduce back
 
-
-    # old code from previous design    
+    # old code from previous design
 
     # template = env.get_template("report.jinja")
     # try:

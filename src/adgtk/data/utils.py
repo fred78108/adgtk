@@ -1,7 +1,5 @@
-"""File operations utility functions
+"""Utility functions for file operations and data transformation."""
 
-
-"""
 
 import logging
 import csv
@@ -10,9 +8,10 @@ import os
 import pickle
 import random
 from typing import cast, Any, Iterable, Optional, Union
+from datasets import load_dataset
 import pandas as pd
 from pydantic import ValidationError
-from adgtk.data.structure import(
+from adgtk.data.structure import (
     OrientationTypes,
     FileDataDefinition,
     FileDefinition,
@@ -29,29 +28,32 @@ ReturnDataTypes = Union[dict, list, pd.DataFrame, None]
 # Inspection Functions
 # ----------------------------------------------------------------------
 
-def valid_dict_of_lists(data:dict) -> bool:
+
+def valid_dict_of_lists(data: dict) -> bool:
     """Verifies a dict is valid for actions such as shuffling/flipping.
 
-    :param data: The data to inspect
-    :type data: dict
-    :return: True if a candidate for shuffling or flipping
-    :rtype: bool
+    Args:
+        data: The dictionary to inspect.
+
+    Returns:
+        True if all lists in the dictionary have the same length.
     """
     keys = list(data.keys())
     list_lengths = [len(data[k]) for k in keys]
-    
+
     if len(set(list_lengths)) != 1:
         return False
     return True
 
 
-def inspect_current_orientation(data:ReturnDataTypes) -> OrientationTypes:
-    """Based on the data returns the orientation type.
+def inspect_current_orientation(data: ReturnDataTypes) -> OrientationTypes:
+    """Determines the orientation type of the provided data.
 
-    :param data: The data to inspect
-    :type data: ReturnDataTypes
-    :return: the orientation of the data
-    :rtype: OrientationTypes
+    Args:
+        data: The data to inspect.
+
+    Returns:
+        The detected orientation type of the data.
     """
     found_orientation = "other"
     if isinstance(data, pd.DataFrame):
@@ -67,64 +69,73 @@ def inspect_current_orientation(data:ReturnDataTypes) -> OrientationTypes:
         for key, value in data.items():
             if not isinstance(value, list):
                 # reduced precision
-                found_orientation = "dict"      
+                found_orientation = "dict"
     # pylance/tox is complaining about str instead of literal
     return found_orientation        # type: ignore
+
 
 # ----------------------------------------------------------------------
 # Loading Functions
 # ----------------------------------------------------------------------
 
-def load_data_from_csv_file(filename:str) -> list:
-      """Loads a CSV file into a list of dictionaries.
+def load_data_from_csv_file(filename: str) -> list:
+    """Loads a CSV file into a list of dictionaries.
 
-      :param filename: The name of the file to load
-      :type filename: str
-      :return: The data from the file
-      :rtype: list
-      """
-      columns: list[str] = []
-      records: list[dict] = []
+    Args:
+        filename: The path to the CSV file.
 
-      with open(filename, "r") as infile:
-            csv_reader = csv.reader(infile)
-            for row in csv_reader:
-                  # we are on the first row when len == 0
-                  if len(columns) == 0:
-                        columns = row
-                  else:
-                        data: dict[Any, Any] = {}
-                        for idx, col in enumerate(columns):
-                              data[col] = row[idx]
-                        records.append(data)
-      return records
+    Returns:
+        A list of dictionaries representing the CSV rows.
+    """
+    columns: list[str] = []
+    records: list[dict] = []
+
+    with open(filename, "r") as infile:
+        csv_reader = csv.reader(infile)
+        for row in csv_reader:
+            # we are on the first row when len == 0
+            if len(columns) == 0:
+                columns = row
+            else:
+                data: dict[Any, Any] = {}
+                for idx, col in enumerate(columns):
+                    data[col] = row[idx]
+                records.append(data)
+    return records
 
 
 def load_data_from_file(
     file_def: FileDefinition
 ) -> ReturnDataTypes:
-    """Loads data from file
+    """Loads data from disk based on a FileDefinition.
 
-    :param file_def: _description_
-    :type file_def: FileDefinition
-    :raises ValueError: Unexpected value
-    :return: _description_
-    :rtype: ReturnDataTypes
+    Args:
+        file_def: The definition of the file to load.
+
+    Raises:
+        ValueError: If the file extension is unexpected or encoding is
+            unsupported.
+
+    Returns:
+        The loaded data in its native or requested format.
     """
     file_w_path = os.path.join(file_def.path, file_def.filename)
     encoding = file_def.encoding
 
     # --------- load the data from file ---------
     # First, load the data for the types that can transform
-    df:Optional[pd.DataFrame] = None
-    data:Optional[Union[pd.DataFrame, dict, list]] = None
+    data: Optional[Union[pd.DataFrame, dict, list]] = None
 
     if encoding == "csv":
         data = load_data_from_csv_file(file_w_path)
-
+    elif encoding == "hf-json":
+        data = load_dataset("json", data_files=file_w_path)
     elif encoding == "json":
         with open(file_w_path, encoding="utf-8", mode="r") as infile:
-             data = json.load(infile)
+            try:
+                data = json.load(infile)
+            except json.decoder.JSONDecodeError:
+                raise ValueError("JSON error opening file %s", file_w_path)
     elif encoding == "pickle":
         with open(file_w_path, mode="rb") as infile:
             data = pickle.load(infile)
@@ -135,7 +146,7 @@ def load_data_from_file(
             data = pd.read_pickle(file_w_path)
         else:
             raise ValueError("Unexpected file extension")
-    else:        
+    else:
         logging.warning(
             f"Unknown encoding defined for {file_def}")
         raise ValueError("Unsupported encoding")
@@ -144,25 +155,26 @@ def load_data_from_file(
         ValueError("Data is None after load.")
     return data
 
+
 def change_orientation(
-    data:ReturnDataTypes,
+    data: ReturnDataTypes,
     target_orientation: OrientationTypes
 ) -> ReturnDataTypes:
-    """This function changes the orientation of data to align with a
-    target. 
+    """Changes the orientation of data to align with a target format.
 
-    :param data: The data to transform
-    :type data: _type_
-    :param orientation: The target data format
-    :type orientation: OrientationTypes
-    :raises RuntimeError: failed to transform
+    Args:
+        data: The data to transform.
+        target_orientation: The desired target data orientation.
 
-    :return: The data modified into the new orientation
-    :rtype: ReturnDataTypes
+    Raises:
+        RuntimeError: If the transformation fails.
+
+    Returns:
+        The data transformed into the target orientation.
     """
 
     # ------- identify source orientation ------
-    found_orientation = inspect_current_orientation(data)  
+    found_orientation = inspect_current_orientation(data)
     if found_orientation == target_orientation:
         return data
 
@@ -176,27 +188,29 @@ def change_orientation(
 
         if target_orientation == "pandas":
             return data
-        elif target_orientation == "list_contains_dict":                
-            return flip_from_dict_to_list(data.to_dict())            
+        elif target_orientation == "list_contains_dict":
+            return flip_from_dict_to_list(data.to_dict())   # type: ignore
         elif target_orientation == "dict_contains_list":
-            return data.to_dict()
+            return data.to_dict()   # type: ignore
         else:
-            logging.warning(f"Unexpected target_orientation {target_orientation} for pandas source")
-            return data.to_dict()
+            logging.warning(
+                "Unexpected target_orientation %s for pandas source",
+                target_orientation)
+            return data.to_dict()   # type: ignore
     elif found_orientation == "list_contains_dict":
         data = cast(list, dict)
         if target_orientation == "list_contains_dict":
             return data
-        elif target_orientation =="dict_contains_list":
+        elif target_orientation == "dict_contains_list":
             return flip_from_list_to_dict(data)
         elif target_orientation == "pandas":
             return pd.DataFrame(data)
     elif found_orientation == "dict_contains_list":
         data = cast(dict, data)
         if target_orientation == "dict_contains_list":
-            return data        
+            return data
         elif target_orientation == "list_contains_dict":
-            return flip_from_dict_to_list(data)        
+            return flip_from_dict_to_list(data)
 
     raise RuntimeError("Failed to transform.")
 
@@ -206,77 +220,85 @@ def change_orientation(
 # ----------------------------------------------------------------------
 
 
-def flip_from_list_to_dict(data:list) -> dict:
-    """Flips a list of data into a dict
+def flip_from_list_to_dict(data: list) -> dict:
+    """Transforms a list of dictionaries into a dictionary of lists.
 
-    :param data: The data to transform
-    :type data: list
-    :raises ValueError: No data, malformed data for flipping
-    :raises RuntimeError: general error with method
-    :return: a list transformed into a dict with lists
-    :rtype: dict
+    Args:
+        data: The list of dictionaries to transform.
+
+    Raises:
+        ValueError: If the list is empty or malformed.
+        RuntimeError: If the resulting dictionary fails validation.
+
+    Returns:
+        A dictionary where each key maps to a list of values.
     """
 
     if len(data) == 0:
         raise ValueError("No data to flip")
-    
+
     # initialize
-    flipped:dict[str,list] = {}
+    flipped: dict[str, list] = {}
 
     # process
     for row in data:
         try:
-             for key, value in row.items():
+            for key, value in row.items():
                 if key not in flipped.keys():
                     # add a list
                     flipped[key] = []
                 # now append
                 flipped[key].append(value)
         except IndexError:
-             raise ValueError("Unable to flip_from_list_to_dict")
+            raise ValueError("Unable to flip_from_list_to_dict")
     # safety check
     if valid_dict_of_lists(flipped):
         return flipped
-    
+
     raise RuntimeError("Error flipping data from list to dict")
 
-def flip_from_dict_to_list(data:dict) -> list:
-    """Converts a dict of lists into a list of dicts
 
-    :param data: The data to transform
-    :type data: dict
-    :raises ValueError: Data is not properly formatted for flipping.
-    :return: A list of dicts containing the same data elements
-    :rtype: list
+def flip_from_dict_to_list(data: dict) -> list:
+    """Transforms a dictionary of lists into a list of dictionaries.
+
+    Args:
+        data: The dictionary of lists to transform.
+
+    Raises:
+        ValueError: If list lengths are inconsistent.
+
+    Returns:
+        A list of dictionaries, one for each index in the source lists.
     """
     dest = []
     if not valid_dict_of_lists(data):
         msg = "Invalid dict type for flipping. Lists are different lengths"
         raise ValueError(msg)
-    
+
     keys = list(data.keys())
-    
     for idx in range(len(data[keys[0]])):
         to_insert = {}
         for key in keys:
             to_insert[key] = data[key][idx]
         dest.append(to_insert)
     return dest
-    
+
 
 def remap_data(
-    data:ReturnDataTypes,
-    key_map:dict[str,str]
+    data: ReturnDataTypes,
+    key_map: dict[str, str]
 ) -> ReturnDataTypes:
-    """Remaps data keys
+    """Remaps keys or columns in the data using a provided mapping.
 
-    :param data: The data to remap
-    :type data: ReturnDataTypes
-    :param key_map: The mapping {from:to}
-    :type key_map: dict[str,str]
-    :raises TypeError: Unknown data type
-    :return: The updated data with the new keys/columns
-    :rtype: ReturnDataTypes
+    Args:
+        data: The data object to remap.
+        key_map: A dictionary mapping old keys to new keys.
+
+    Raises:
+        TypeError: If the data type is not supported for remapping.
+
+    Returns:
+        The data with updated keys or columns.
     """
 
     if isinstance(data, pd.DataFrame):
@@ -286,30 +308,32 @@ def remap_data(
             if old_key in data.keys():
                 data[new_key] = data.pop(old_key)
     elif isinstance(data, Iterable):
-         for row in data:
-              for old_key, new_key in key_map.items():
-                   if old_key in row.keys():
-                        row[new_key] = row.pop(old_key)
+        for row in data:
+            for old_key, new_key in key_map.items():
+                if old_key in row.keys():
+                    row[new_key] = row.pop(old_key)
     else:
         raise TypeError(f"Unexpected Data type {type(data)} for remap_data")
-    
     return data
 
 
 def shuffle_dict_of_lists(data: dict) -> dict:
-    """Shuffles a dict containing lists
+    """Shuffles a dictionary containing lists synchronously.
 
-    :param data: The data to shuffle
-    :type data: dict
-    :raises ValueError: Unexpected list length within dict
-    :return: A shuffled dict of lists
-    :rtype: dict
+    Args:
+        data: The dictionary of lists to shuffle.
+
+    Raises:
+        ValueError: If list lengths are inconsistent.
+
+    Returns:
+        A dictionary with all lists shuffled using the same random indices.
     """
 
     if not valid_dict_of_lists(data):
         msg = "Invalid dict type for shuffling. Lists are different lengths"
         raise ValueError(msg)
-    
+
     keys = list(data.keys())
     list_lengths = [len(data[k]) for k in keys]
     indices = list(range(list_lengths[0]))
@@ -318,37 +342,37 @@ def shuffle_dict_of_lists(data: dict) -> dict:
     return {k: [data[k][i] for i in indices] for k in keys}
 
 
-def shuffle_data(data:ReturnDataTypes) -> ReturnDataTypes:
-    """Shuffles the data by inspecting then shuffling based on the
-    data type found.
+def shuffle_data(data: ReturnDataTypes) -> ReturnDataTypes:
+    """Shuffles data based on its detected type.
 
-    :param data: The data to shuffle
-    :type data: ReturnDataTypes
-    :return: The shuffled data
-    :rtype: ReturnDataTypes
+    Args:
+        data: The data to shuffle.
+
+    Returns:
+        The shuffled data object.
     """
     if isinstance(data, list):
         random.shuffle(data)
-        return data # random.shuffle is in-place but return=consistent
+        return data     # random.shuffle is in-place but return=consistent
     elif isinstance(data, dict):
         return shuffle_dict_of_lists(data)
     elif isinstance(data, pd.DataFrame):
         return data.sample(frac=1).reset_index(drop=True)
     raise ValueError("Unexpected data type")
 
-def split_dict(data:dict, keys:list) -> tuple:
-    """Splits a dictionary into left/right based on keys. If a string is
-    the the key in the data element and in the keys list then it is sent
-    to the right record, else the left. This allows therefore an easy to
-    use function for splitting left/right records. Note, this works
-    regardless of what the values are, float, str, list, etc.
 
-    :param data: The data to split.
-    :type data: dict
-    :param keys: a list of strings that mark what maps to right
-    :type keys: list
-    :return: two dicts (left, right)
-    :rtype: tuple
+def split_dict(data: dict, keys: list) -> tuple:
+    """Splits a dictionary into two based on a list of keys.
+
+    Keys found in the 'keys' list are moved to the 'right' dictionary,
+    while all others remain in the 'left' dictionary.
+
+    Args:
+        data: The dictionary to split.
+        keys: The list of keys to assign to the right dictionary.
+
+    Returns:
+        A tuple containing (left_dict, right_dict).
     """
     left = {}
     right = {}
@@ -363,18 +387,18 @@ def split_dict(data:dict, keys:list) -> tuple:
 
 def split_data_into_left_right(
     data: Union[list, dict, pd.DataFrame],
-    keys:list
+    keys: list
 ) -> tuple:
-    """Splits data into left/right elements.
+    """Splits a data structure into left and right components.
 
-    :param data: The data to split
-    :type data: Union[list, dict, pd.DataFrame]
-    :param keys: a list of strings that mark what maps to right
-    :type keys: list
-    :return: a left and right of the same type as before
-    :rtype: tuple
+    Args:
+        data: The data structure (list, dict, or DataFrame) to split.
+        keys: The keys or columns to move to the right component.
+
+    Returns:
+        A tuple of (left, right) preserving the original data type.
     """
-     
+
     if isinstance(data, dict):
         return split_dict(data=data, keys=keys)
     elif isinstance(data, pd.DataFrame):
@@ -402,17 +426,20 @@ def load_data(
         FileDefinition,
         dict]
 ) -> ReturnDataTypes:
-    """Loads the data and performs the requested data wrangling such as
-    remapping of keys, format, and shuffle.
+    """Loads and transforms data according to a definition.
 
-    :param data_def: The definition to load based on
-    :type data_def: Union[
-        InMemoryDataDefinition, FileDataDefinition. FileDefinition, dict]
-    :raises ValueError: Invalid data_def.
-    :return: The loaded and transformed data
-    :rtype: ReturnDataTypes
+    Handles loading from disk or memory, followed by shuffling,
+    orientation changes, and key remapping as specified.
+
+    Args:
+        data_def: The definition specifying how to load and process data.
+
+    Raises:
+        ValueError: If the definition type is unrecognized or invalid.
+
+    Returns:
+        The fully processed data, or None if no data was found.
     """
-    
     # --------- loading of data -----------
     data = None
     if isinstance(data_def, dict):
@@ -426,7 +453,7 @@ def load_data(
             data_def = FileDefinition(**data_def)   # type: ignore
 
         except ValidationError:
-            pass            
+            pass
         # inMemory?
         try:
             data_def = InMemoryDataDefinition(**data_def)   # type: ignore
@@ -451,12 +478,11 @@ def load_data(
     if data is None:
         return None
 
-
     # --------- processing of data -----------
     if data_def.shuffle_on_load is not None:
         if data_def.shuffle_on_load:
             data = shuffle_data(data)
-    
+
     # change orientation?
     target_orientation = data_def.target_orientation
     if target_orientation is not None:

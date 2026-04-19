@@ -1,10 +1,10 @@
-"""Provides and ADGTK managed dataset inventory.
+"""Provides an ADGTK managed dataset inventory CLI.
 
-Status: MVP, just enough to get basic data parsing now.
+This module provides the command-line interface for managing datasets within
+an ADGTK project, allowing for registration, retirement, and reporting.
 
-ROADMAP
-=======
-1. loading of datasets from HuggingFace ds, other wrappers.
+Roadmap:
+    1. loading of datasets from HuggingFace ds, other wrappers.
 """
 
 import argparse
@@ -22,14 +22,11 @@ if not os.path.exists(bootstrap_file):
 # ----------------------------------------------------------------------
 # End of path verification
 # ----------------------------------------------------------------------
-print("Here for some reason?")
 from typing import Literal, Optional, Union, cast
 from adgtk.data.structure import (
     SUPPORTED_FILE_ENCODING_TYPES,
     FileEncodingTypes
 )
-
-
 from adgtk.data.dataset import DatasetManager
 from adgtk.utils import get_user_input
 from adgtk.utils import create_logger
@@ -41,9 +38,6 @@ _logger = create_logger(
     logger_name=__name__
 )
 
-
-
-
 # ----------------------------------------------------------------------
 # Constants - user facing strings
 # ----------------------------------------------------------------------
@@ -52,8 +46,8 @@ INTRO = ("ADGTK-DS: Bringing a consistent interface for your datasets\n"
          "===========================================================\n"
          "The adgtk-ds is a utility script for managing the datasets \n"
          "used for experimentation. This provides the human researcher the \n"
-         "ability to refer to a file id during experiments instead of \ndealing"
-         " with the complexity of the different formats, ingestion, \n"
+         "ability to refer to a file id during experiments instead of \n"
+         "dealing with the complexity of the different formats, ingestion, \n"
          "etc as part of normal data processing.\n"
          )
 
@@ -73,7 +67,7 @@ For register the following are valid arguments:
                   (valid: {SUPPORTED_FILE_ENCODING_TYPES})
 --metadata     : The metadata file w/path
                   (example: file.csv has file.meta.json)
---use          : The use of the dataset. 
+--use          : The use of the dataset.
                   (valid: test, train, validate, other)
 
 for retire the following are valid arguments:
@@ -105,15 +99,15 @@ The log is maintained at logs/common/dataset.manager.log
 
 
 def parse_args() -> argparse.Namespace:
-    """Parses the command line arguments
+    """Parses the command line arguments for the dataset manager.
 
     Returns:
-        argparse.Namespace: The command line input
+        argparse.Namespace: The parsed command line arguments.
     """
     parser = argparse.ArgumentParser()
     command_parser = parser.add_subparsers(
         dest="command", help="Command to perform")
-    
+
     # Report subcommand
     report_parser = command_parser.add_parser(
         "report", help="Generate a report")
@@ -173,6 +167,13 @@ def parse_args() -> argparse.Namespace:
 
 
 def retire_file(file_tracker: DatasetManager, id: Optional[str] = None):
+    """Retires a file from the dataset manager.
+
+    Args:
+        file_tracker (DatasetManager): The dataset manager instance.
+        id (Optional[str], optional): The unique ID of the file to retire.
+            If None, the user is prompted for input.
+    """
 
     if id is None:
         id = str(get_user_input(
@@ -188,10 +189,15 @@ def retire_file(file_tracker: DatasetManager, id: Optional[str] = None):
         print(e)
         _logger.error(e)
         sys.exit()
-    except (FileNotFoundError, PermissionError, IsADirectoryError, OSError) as e:
+    except (
+        FileNotFoundError,
+        PermissionError,
+        IsADirectoryError,
+        OSError
+    ) as e:
         print(e)
         _logger.error(e)
-        print(f"Check logs/file.manager.log for additional information")
+        print("Check logs/file.manager.log for additional information")
         sys.exit()
 
     print("File has been retired. File has been moved to .trash if "
@@ -206,8 +212,25 @@ def register_file(
     metadata: Optional[bool] = None,
     tags: Optional[Union[str, list[str]]] = None,
     id: Optional[str] = None,
-    use:Literal["test", "train", "validate", "other"] = "train"
+    use: Literal["test", "train", "validate", "other"] = "train"
 ):
+    """Registers a new file into the dataset manager.
+
+    Args:
+        file_tracker (DatasetManager): The dataset manager instance.
+        source_file (Optional[str], optional): The path to the file
+            to register.
+        folder (Optional[str], optional): Optional folder override (unused).
+        encoding (Optional[FileEncodingTypes], optional): The file
+            encoding type.
+        metadata (Optional[bool], optional): Whether a metadata file exists.
+        tags (Optional[Union[str, list[str]]], optional): Tags to
+            associate with the dataset.
+        id (Optional[str], optional): Custom ID for the file entry.
+        use (Literal["test", "train", "validate", "other"], optional): The
+            intended use of the dataset (e.g., 'train', 'test').
+            Defaults to "train".
+    """
 
     if source_file is None:
         source_file = str(get_user_input(
@@ -288,6 +311,8 @@ def register_file(
 
 
 def main():
+    """Main entry point for the ADGTK-DS CLI tool.
+    """
     args = parse_args()
 
     # ensure the main folder is there
@@ -308,7 +333,7 @@ def main():
         )
     elif args.command == "find":
         if args.file is None:
-            print(f"Filename is required to find an ID")
+            print("Filename is required to find an ID")
             sys.exit(1)
 
         id = ds_mgr.get_file_id(filename=args.file)
@@ -317,7 +342,7 @@ def main():
 
     elif args.command == "retire":
         if args.id is None:
-            print(f"Filename is required to retire an ID")
+            print("Filename is required to retire an ID")
             sys.exit(1)
 
         ds_mgr.retire_file(args.id)

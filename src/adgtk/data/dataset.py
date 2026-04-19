@@ -1,12 +1,10 @@
-"""The dataset module is focused on providing a consistent interface for
-registering, loading, and managing datasets.  It accomplishes this by
-inheriting the JsonFileTracker and using the file utilities provides an
-easy to use interface for registering a file and loading the file by the
-id.
+"""Dataset management module.
 
-Roadmap
-=======
-1. Improved reporting by use
+Provides a consistent interface for registering, loading, and managing
+datasets by inheriting from JsonFileTracker and utilizing file utilities.
+
+Roadmap:
+    1. Improved reporting by use.
 """
 
 import os
@@ -22,13 +20,28 @@ FILENAME = "datasets.json"
 
 
 class DatasetManager(JsonFileTracker):
+    """Manages dataset registration and loading using a JSON-based inventory.
+
+    Inherits from JsonFileTracker to provide tracking and persistence for
+    dataset files.
+    """
 
     def __init__(
         self,
-        name:str = "dataset.manager",
+        name: str = "dataset.manager",
         folder: str = ".tracking",
         inventory_file: Optional[str] = None
     ) -> None:
+        """Initializes the DatasetManager.
+
+        Args:
+            name: The name used for the tracker label and logging.
+                Defaults to "dataset.manager".
+            folder: The directory where tracking files are stored.
+                Defaults to ".tracking".
+            inventory_file: Custom filename for the inventory.
+                Defaults to None.
+        """
         os.makedirs(folder, exist_ok=True)
         file_name = inventory_file or FILENAME
         file_w_path = os.path.join(folder, file_name)
@@ -51,24 +64,27 @@ class DatasetManager(JsonFileTracker):
         tags: Optional[Union[str, list[str]]] = None,
         id: Optional[str] = None,
         use: Literal["test", "train", "validate", "other"] = "other",
-        purpose:PurposeTypes= "other"
+        purpose: PurposeTypes = "other"
     ) -> str:
         """Registers a file definition.
 
-        :param source_file: The name of the file w/path
-        :type source_file: str
-        :param encoding: The encoding of the file
-        :type encoding: FileEncodingTypes
-        :param tags: The tags for this file, defaults to None
-        :type tags: Optional[list[str]], optional
-        :param id: The requested ID, defaults to None
-        :type id: Optional[str], optional
-        :param purpose: The purpose of the file
-        :type purpose: PurposeTypes
-        :raises FileNotFoundError: File is not found
-        :raises IndexError: The id already exists
-        :return: The id of the file saved
-        :rtype: str
+        Args:
+            source_file: The name of the file with its path.
+            encoding: The encoding of the file.
+            metadata_file: Optional path to a metadata file. Defaults to None.
+            tags: The tags for this file. Defaults to None.
+            id: The requested ID. Defaults to None.
+            use: Intended usage category (e.g., test, train).
+                Defaults to "other".
+            purpose: The purpose of the file for experiment tracking.
+                Defaults to "other".
+
+        Raises:
+            FileNotFoundError: If the source file is not found on disk.
+            IndexError: If the provided ID already exists in the inventory.
+
+        Returns:
+            The unique ID assigned to the registered file.
         """
         full_path = os.path.abspath(source_file)
         if not os.path.exists(full_path):
@@ -89,15 +105,14 @@ class DatasetManager(JsonFileTracker):
             id=id
         )
 
-
     def load_file(self, id: str) -> ReturnDataTypes:
-        """Pulls the file definition from the file tracker and then uses
-        the load_data_from_file utility function to load the data.
+        """Retrieves and loads data from a file using its tracker ID.
 
-        :param id: the ID in the file_tracker.
-        :type id: str
-        :return: The loaded data
-        :rtype: ReturnDataTypes
+        Args:
+            id: The unique identifier of the file in the tracker.
+
+        Returns:
+            The loaded data in its native or requested format.
         """
         file_def = self.get_file_definition(id)
         return load_data_from_file(file_def=file_def)

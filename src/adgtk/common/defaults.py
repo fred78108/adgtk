@@ -1,6 +1,5 @@
 """Provides a common place for default values. Helps to avoid circular
 importing."""
-from typing import Literal
 
 # Experiment Folders
 EXP_DEF_DIR = "blueprints"

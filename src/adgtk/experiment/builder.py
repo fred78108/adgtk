@@ -1,4 +1,7 @@
-"""Builds and manages experiments via a CLI UX
+"""Builds and manages experiments via a CLI UX.
+
+This module handles the interactive process of selecting scenarios and
+configuring experiment attributes using the component factory.
 
 TODO: take advantage of _working_on
 """
@@ -11,7 +14,6 @@ import yaml
 from adgtk.utils import get_user_input, get_more_ask
 import adgtk.factory.component as factory
 from adgtk.factory.structure import BlueprintQuestion
-from adgtk.utils import get_user_input
 from adgtk.experiment.structure import (
     EXPERIMENT_LABEL,
     SCENARIO_LABEL,
@@ -47,17 +49,21 @@ def _get_user_selection_from_group(
     user_prompt: str,
     tags: Optional[Union[str, list[str]]] = None,
 ) -> str:
-    """Uses a CLI based experience to list options for the user and
-    then via the get_user_input collects the user selection. it then
-    returns the associated factory_id of this selection
+    """Lists group options via CLI and collects a user selection.
 
-    :param user_prompt: The prompt to the user
-    :type user_prompt: str
-    :param group: The group to search for
-    :type group: str
-    :raises ValueError: Unexpected get_user_input value
-    :return: the factory_id of the user selection
-    :rtype: str
+    Displays factory entries associated with a specific group, prompts the user
+    to select one (by index or ID), and returns the chosen factory_id.
+
+    Args:
+        group: The factory group to list entries from.
+        user_prompt: The prompt displayed to the user.
+        tags: Optional tags to filter the factory entries.
+
+    Returns:
+        The factory_id of the user selection.
+
+    Raises:
+        ValueError: If the user input is invalid or the selection fails.
     """
     entries = factory.list_entries(group=group, tags=tags)
 
@@ -65,10 +71,26 @@ def _get_user_selection_from_group(
     line_length = max(len(title), MIN_LINE_LENGTH)
     print(title)
     print("-"*line_length)
+
+    factory_width = 15
+    summary_width = 50
+    if entries:
+        factory_width = max(
+            factory_width,
+            max(len(entry.factory_id) for entry in entries))
+        summary_width = max(
+            summary_width,
+            max(len(entry.summary) for entry in entries))
+    row_fmt = f"  {{idx:<3}} : {{factory_id:<{factory_width}}} "
+    row_fmt += f"| {{summary:<{summary_width}}}"
+
     choices: list[str] = []
     idx_choices = []
     for idx, entry in enumerate(entries):
-        print(f"  {idx} : {entry.factory_id:<15} | {entry.summary:50}")
+        print(row_fmt.format(
+            idx=idx,
+            factory_id=entry.factory_id,
+            summary=entry.summary))
         choices.append(entry.factory_id)
         choices.append(str(idx))
         idx_choices.append(entry.factory_id)
@@ -111,13 +133,17 @@ def _get_user_selection_from_group(
 def _perform_interview(
     interview: list[BlueprintQuestion]
 ) -> list[AttributeEntry]:
-    """Performs an interview by iterating through a series of questions.
+    """Iterates through questions to capture attribute configurations.
 
-    :param interview: _description_
-    :type interview: list[BlueprintQuestion]
-    :raises ValueError: Unexpected combinations
-    :return: A list of attributes for init via a factory
-    :rtype: list[AttributeEntry]
+    Args:
+        interview: A list of BlueprintQuestion objects defining the
+            required attributes.
+
+    Returns:
+        A list of populated AttributeEntry objects.
+
+    Raises:
+        ValueError: If an expansion group is missing or input capture fails.
     """
     item_being_built = _working_on[-1]  # set at _expand
 
@@ -150,6 +176,42 @@ def _perform_interview(
                 user_prompt=entry.question,
                 requested="ml-str"
             )
+        elif entry.entry_type == "list[str]":
+            value = []
+            tmp_value = get_user_input(
+                    user_prompt=entry.question, requested="str")
+            value.append(tmp_value)
+            while get_more_ask():
+                tmp_value = get_user_input(
+                    user_prompt=entry.question, requested="str")
+                value.append(tmp_value)
+        elif entry.entry_type == "list[bool]":
+            value = []
+            tmp_value = get_user_input(
+                    user_prompt=entry.question, requested="bool")
+            value.append(tmp_value)
+            while get_more_ask():
+                tmp_value = get_user_input(
+                    user_prompt=entry.question, requested="bool")
+                value.append(tmp_value)
+        elif entry.entry_type == "list[int]":
+            value = []
+            tmp_value = get_user_input(
+                    user_prompt=entry.question, requested="int")
+            value.append(tmp_value)
+            while get_more_ask():
+                tmp_value = get_user_input(
+                    user_prompt=entry.question, requested="int")
+                value.append(tmp_value)
+        elif entry.entry_type == "list[float]":
+            value = []
+            tmp_value = get_user_input(
+                    user_prompt=entry.question, requested="float")
+            value.append(tmp_value)
+            while get_more_ask():
+                tmp_value = get_user_input(
+                    user_prompt=entry.question, requested="float")
+                value.append(tmp_value)
         elif entry.entry_type == "list[expand]":
             # get the minimum values
             if entry.group is None:
@@ -241,18 +303,18 @@ def _perform_interview(
 
 
 def _expand(factory_id: str, attribute: str) -> AttributeEntry:
-    """Expands an attribute
+    """Expands a factory ID into a configured AttributeEntry.
 
-    :param factory_id: The factory ID to expand
-    :type factory_id: str
-    :param attribute: The label of the attribute
-    :type attribute: str
-    :raises ValueError: unknown factory_id
-    :return: The collected configuration
-    :rtype: AttributeEntry
+    Args:
+        factory_id: The factory identifier to expand.
+        attribute: The name of the attribute being configured.
+
+    Returns:
+        The configured AttributeEntry object.
+
+    Raises:
+        ValueError: If the factory_id is not registered in the factory.
     """
-    global _working_on
-
     if not factory.entry_exists(factory_id):
         msg = f"Requesting to expand an unknown factory_id {factory_id}"
         _logger.error(msg)
@@ -291,6 +353,17 @@ def _expand(factory_id: str, attribute: str) -> AttributeEntry:
 # Public
 # ----------------------------------------------------------------------
 def create_experiment_name_ux() -> str:
+    """Interactive UX for determining an experiment name.
+
+    Allows the user to choose between automatic generation (using a prefix)
+    or manual entry.
+
+    Returns:
+        The finalized experiment name string.
+
+    Raises:
+        ValueError: If user input cannot be captured.
+    """
     user_prompt = "Do you want the system to automatically create a name"
     auto_create = get_user_input(
         user_prompt=user_prompt,
@@ -307,7 +380,7 @@ def create_experiment_name_ux() -> str:
     if auto_create.lower().startswith("y"):
         cur_prefix_options = project_manager.get_prefix_list()
         if len(cur_prefix_options) > 0:
-            print(f"Existing prefixes:")
+            print("Existing prefixes:")
             for entry in cur_prefix_options:
                 print(f" - {entry}")
 
@@ -346,7 +419,18 @@ def build_experiment(
     scenario_factory_id: Optional[str] = None,
     tags: Optional[str] = None
 ) -> None:
+    """Builds a new experiment definition via a CLI interview process.
 
+    This function collects the experiment name, description, and scenario
+    configuration, then saves the resulting definition as a YAML file in the
+    'blueprints' directory.
+
+    Args:
+        name: Optional experiment name. If None, triggers the naming UX.
+        scenario_factory_id: Optional factory ID for the scenario. If None,
+            prompts the user to select one.
+        tags: Optional tags used to filter scenario selection.
+    """
     if name is None:
         name = create_experiment_name_ux()
 
@@ -394,3 +478,4 @@ def build_experiment(
             sort_keys=False)
 
     _logger.info(f"Created experiment file: {file_w_path}")
+    print(f"Created Experiment: {name}")

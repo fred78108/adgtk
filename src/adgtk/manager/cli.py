@@ -40,7 +40,14 @@ PID_FILE = "adgtk-mgr.pid"
 
 
 def load_bootstrap():
-    """Loads the user-defined bootstrap module if present."""
+    """Loads the user-defined bootstrap module if present.
+
+    Returns:
+        Any: The loaded bootstrap module if found, else None.
+
+    Raises:
+        ImportError: If the bootstrap module is found but fails to load.
+    """
     bootstrap_path = os.path.join(os.getcwd(), "bootstrap.py")
     if not os.path.exists(bootstrap_path):
         print("No bootstrap.py found.")
@@ -61,7 +68,11 @@ def load_bootstrap():
 
 
 def execute_bootstrap_hooks(module):
-    """Calls foundation(), builtin(), and user_code() from bootstrap.py."""
+    """Calls foundation(), builtin(), and user_code() hooks from bootstrap.py.
+
+    Args:
+        module: The bootstrap module instance to execute hooks from.
+    """
     for hook in ["foundation", "builtin", "user_code"]:
         func = getattr(module, hook, None)
         if callable(func):
@@ -79,6 +90,12 @@ def execute_bootstrap_hooks(module):
 # Signal management
 # ----------------------------------------------------------------------
 def cleanup(signum, frame):
+    """Signal handler to ensure clean exit and removal of the PID file.
+
+    Args:
+        signum: The signal number being handled.
+        frame: The current stack frame.
+    """
     try:
         scenario_logger = get_scenario_logger()
         scenario_logger.info("signal recieved. exiting early")
@@ -88,19 +105,14 @@ def cleanup(signum, frame):
     if os.path.exists(PID_FILE):
         os.remove(PID_FILE)
     sys.exit()
-# ----------------------------------------------------------------------
-# Module configuration
-# ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
 # Logging
 # ----------------------------------------------------------------------
+
+
 BUILDER_LOG = "adgtk.builder.log"
 _logger: Optional[Logger] = None
-# ----------------------------------------------------------------------
-# Module variables
-# ----------------------------------------------------------------------
-
 
 # ----------------------------------------------------------------------
 # Private
@@ -108,10 +120,10 @@ _logger: Optional[Logger] = None
 
 
 def _parse_args() -> argparse.Namespace:
-    """Parses the command line arguments
+    """Parses the command line arguments.
 
     Returns:
-        argparse.Namespace: The command line input
+        argparse.Namespace: The parsed command line arguments.
     """
     parser = argparse.ArgumentParser()
 
@@ -186,8 +198,9 @@ def _parse_args() -> argparse.Namespace:
 def _create_boot_py(base_path: str = ""):
     """Creates the bootstrap.py file when creating a new project.
 
-    :param base_path: The path to include, defaults to ""
-    :type base_path: str, optional
+    Args:
+        base_path: The directory path where bootstrap.py will be created.
+            Defaults to "".
     """
     file_w_path = os.path.join(base_path, BOOT_FILENAME)
     with open(file=file_w_path, mode="w", encoding="utf-8") as outfile:
@@ -195,10 +208,10 @@ def _create_boot_py(base_path: str = ""):
 
 
 def _create_project(name: str) -> None:
-    """Creates a project
+    """Creates a new ADGTK project directory and initializes it.
 
-    :param name: The project/directory name to create
-    :type name: str
+    Args:
+        name: The name of the project folder to create.
     """
     print(f"Creating project: {name}")
 
@@ -223,9 +236,7 @@ def _create_project(name: str) -> None:
 
 
 def _list_projects() -> None:
-    """Experience in which a list of available projects are sent to the
-    screen.
-    """
+    """Scans the current directory and lists all identified ADGTK projects."""
     project_folders = []
     folders = os.listdir("./")
     for folder_or_file in folders:
@@ -240,8 +251,7 @@ def _list_projects() -> None:
 
 
 def _run_bootstrap():
-    """Loads the bootstrap file
-    """
+    """Loads and executes the standard hooks in the bootstrap file."""
     # invoke the expected functions
     try:
         bootstrap = load_bootstrap()
@@ -258,6 +268,14 @@ def _run_bootstrap():
 
 
 def _in_project() -> bool:
+    """Verifies if the execution context is within a valid ADGTK project.
+
+    Returns:
+        bool: True if a valid bootstrap.py and results folder exist.
+
+    Raises:
+        Exception: Re-raises exceptions encountered during bootstrap loading.
+    """
     if not os.path.exists("bootstrap.py"):
         return False
     if not os.path.exists(EXP_RESULTS_FOLDER):
@@ -271,7 +289,7 @@ def _in_project() -> bool:
                 return False
     except Exception as e:
         print(f"ERROR: Bootstrap inspection failed: {e}")
-        #return True  # fallback: we assume it's okay for now
+        # return True  # fallback: we assume it's okay for now
         # TODO: consider setting argument to return True vs dump.
         raise e
 
@@ -279,17 +297,18 @@ def _in_project() -> bool:
 
 
 def is_project(folder: str) -> bool:
-    """Does a lightweight inspection of a folder to determine if it
-    appears to be a project. Note that a deeper inspection is performed
-    by _in_project in that function inspects the bootstrap file by
-    loading from within a project. However, function does not rely on
-    needing to load user modules, etc so it is primarly used outside of
-    a project such as getting a listing of projects.
+    """Performs a lightweight inspection of a folder to identify if it
+    appears to be a valid ADGTK project.
 
-    :param folder: The folder to inspect
-    :type folder: str
-    :return: True if it appears to be a project.
-    :rtype: bool
+    This function performs a structural check without loading user modules,
+    making it safe for listing available projects from the parent directory.
+
+    Args:
+        folder: The folder path to inspect.
+
+    Returns:
+        bool: True if the folder structure matches an ADGTK project,
+            False otherwise.
     """
     if not os.path.isdir(folder):
         return False
@@ -302,11 +321,11 @@ def is_project(folder: str) -> bool:
     with open(bootstrap_file_w_path, "r", encoding="utf-8") as infile:
         raw_text = infile.read()
         # it will always have a few things
-        if not "foundation()" in raw_text:
+        if "foundation()" not in raw_text:
             return False
-        if not "builtin()" in raw_text:
+        if "builtin()" not in raw_text:
             return False
-        if not "user_code()" in raw_text:
+        if "user_code()" not in raw_text:
             return False
 
     # now check for the results folder
@@ -320,9 +339,10 @@ def is_project(folder: str) -> bool:
 
 
 def _list_experiments():
-    """Lists the experiments to the console.
+    """Lists available experiment blueprints to the console.
 
-    :raises ValueError: failed to properly parse an experiment
+    Raises:
+        ValueError: If an experiment entry cannot be parsed correctly.
     """
     exp_list = project_manager.get_available_experiments()
     name_str = "experiment name"
@@ -360,21 +380,21 @@ def _list_experiments():
 
 
 def manager() -> None:
-    """provides a CLI management"""
+    """Main entry point for the ADGTK management CLI."""
     global _logger
 
     # -------- setup ------------
     args = _parse_args()
     exp_name: Optional[str] = None
     scenario_logger: Optional[Logger] = None
-    
+
     # Ensures current directory is part of the path
     sys.path.insert(0, os.getcwd())
 
     # register signal handlers
     signal.signal(signal.SIGTERM, cleanup)
     signal.signal(signal.SIGINT, cleanup)
-    
+
     # now see if in-project
     inside_a_project = _in_project()
     try:
@@ -449,7 +469,7 @@ def manager() -> None:
                 experiment_runner.run_scenario(
                     filename=exp_name,
                     append_timestamp=False,
-                    use_count=True)                
+                    use_count=True)
                 sys.exit()
 
             else:
@@ -460,7 +480,7 @@ def manager() -> None:
             factory.report(group=args.group, tags=args.tags)
             sys.exit()
     except KeyboardInterrupt:
-        try:        
+        try:
             scenario_logger = get_scenario_logger()
             scenario_logger.info("Keyboard interupt. ending early")
         except RuntimeError:
@@ -468,6 +488,7 @@ def manager() -> None:
             pass
         if os.path.exists(PID_FILE):
             os.remove(PID_FILE)
+
 
 if __name__ == '__main__':
     manager()

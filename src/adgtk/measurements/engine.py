@@ -1,10 +1,11 @@
-"""Provides an Engine for measuring a dataset.
+"""Measurement engine for running and tracking dataset measurements.
 
-This module defines the `MeasurementEngine` class, which facilitates the 
-measurement of data using various measurement types and factories. It also 
-includes helper functions to validate measurement types.
+This module defines `MeasurementEngine`, which manages measurement factory
+registration, executes measurements and comparisons, and records results via
+`MetricTracker`.
 
-TODO: Get the scenario logger and set it as the logger for the engine!
+It also includes helper utilities for validating measurement function
+signatures against runtime arguments.
 """
 
 from collections.abc import Iterable
@@ -28,9 +29,9 @@ from adgtk.tracking import ExperimentRunFolders, MetricTracker
 from .factory import create_measurement
 from .factory import (
     ClassBasedComparison,
-    ClassBasedMeasurement,    
+    ClassBasedMeasurement,
     MeasFactoryEntry,
-    direct_comparison,    
+    direct_comparison,
     direct_measurement,
     distribution_measurement,
     distribution_comparison,
@@ -51,15 +52,16 @@ DEBUG = False
 # ----------------------------------------------------------------------
 calculation_type = Literal["avg", "sum", "max", "min", "raw", "distribution"]
 
+
 class MeasurementData(TypedDict):
-    """Records and reports on a single label/measurement and all its data"""
+    """Data recorded for a single measurement label."""
     label: str
     description: str
     data: list
 
+
 class MeasurementReport(TypedDict):
-    """A report structure that can be used by an agent to undertstand the
-    measurements and associated results"""
+    """Structured report containing all recorded measurements for an engine."""
     engine_id: str
     measurements: list[MeasurementData]
 
@@ -69,14 +71,15 @@ class MeasurementReport(TypedDict):
 # ----------------------------------------------------------------------
 def supports_measurement_type(func, *args) -> bool:
     """
-    Validates if the provided arguments match the expected types of a function.
+    Return whether the provided arguments match a callable's annotations.
 
     Args:
-        func: The function whose parameter types are to be validated.
-        *args: The arguments to validate against the function's parameter types.
+        func: Callable to validate.
+        *args: Runtime arguments to check against annotated parameter types.
 
     Returns:
-        bool: True if all arguments match the expected types, False otherwise.
+        True if argument count and annotated types are compatible; otherwise
+        False.
     """
     sig = inspect.signature(func)
     parameters = sig.parameters
@@ -91,7 +94,9 @@ def supports_measurement_type(func, *args) -> bool:
                           f"Argument type: {type(arg)}")
                 # Handle Union types
                 if get_origin(expected_type) is Union:
-                    if not any(isinstance(arg, t) for t in get_args(expected_type)):
+                    if not any(
+                        isinstance(arg, t) for t in get_args(expected_type)
+                    ):
                         return False
                 # Handle regular types
                 elif not isinstance(arg, expected_type):
@@ -99,7 +104,7 @@ def supports_measurement_type(func, *args) -> bool:
 
     if len(args) != len(parameters):
         return False
-    
+
     return True
 # ----------------------------------------------------------------------
 # Engine
@@ -109,14 +114,14 @@ def supports_measurement_type(func, *args) -> bool:
 class MeasurementEngine:
     """Drives measurements of data.
 
-    The `MeasurementEngine` class manages the registration of measurement 
+    The `MeasurementEngine` class manages the registration of measurement
     factories, tracks metrics, and performs measurements on datasets.
 
     Attributes:
         engine_id (Optional[str]): A unique identifier for the engine.
-        measurements (dict[str, supports_factory]): A dictionary of registered 
+        measurements (dict[str, supports_factory]): A dictionary of registered
             measurement factories.
-        details (dict[str, MeasFactoryEntry]): A dictionary containing details 
+        details (dict[str, MeasFactoryEntry]): A dictionary containing details
             about each registered measurement factory.
         metric_tracker (MetricTracker): Tracks metrics for the measurements.
         logger: Logger instance for logging engine-related events.
@@ -130,16 +135,7 @@ class MeasurementEngine:
         add_by_tag: Optional[Union[str, list[measurement_type]]] = None
     ) -> None:
         """
-        Initializes the MeasurementEngine.
-
-        Args:
-            engine_id (Optional[str]): A unique identifier for the engine.
-            add_factory_ids (Optional[list[str]]): A list of factory IDs to 
-                register during initialization.
-            add_by_type (Optional[measurement_type]): A measurement type to 
-                register factories by.
-            add_by_tag (Optional[Union[str, list[measurement_type]]]): A tag 
-                or list of tags to register factories by.
+        Initialize a new measurement engine.
         """
         self.engine_id = engine_id or str(uuid.uuid4())
         self.measurements: dict[str, supports_factory] = {}
@@ -154,100 +150,99 @@ class MeasurementEngine:
             for entry in add_factory_ids:
                 self.add(entry)
         if add_by_type is not None:
-            entries = get_measurements_by_type(add_by_type)
-            for entry in entries:
-                self.add(entry['factory_id'])
+            tag_entries = get_measurements_by_type(add_by_type)
+            for tag_entry in tag_entries:
+                assert isinstance(tag_entry, dict)
+                self.add(tag_entry['factory_id'])
         if add_by_tag is not None:
-            entries = get_measurements_by_tag(add_by_tag)
-            for entry in entries:                
-                self.add(entry['factory_id'])
+            tag_entries = get_measurements_by_tag(add_by_tag)
+            for tag_entry in tag_entries:
+                assert isinstance(tag_entry, dict)
+                self.add(tag_entry['factory_id'])
 
     def clear_results(self) -> None:
-        """Clears all prior measurements but retains the definitions.
-        """
+        """Clear all recorded results while keeping metric registrations."""
         self.metric_tracker.clear_results()
 
-    def get_all_data(self, label:str) -> list:
-        """Gets all the data stored for a label
+    def get_all_data(self, label: str) -> list:
+        """Return all values currently recorded for a metric label.
 
         Args:
-            label (str): The label of the measurement
+            label: Metric label.
 
         Returns:
-            list: the data
+            Recorded values for the label.
         """
         return self.metric_tracker.get_all_data(label)
-    
-    def measurement_count(self, label:str)-> int:
-        """The number of measurements stored
+
+    def measurement_count(self, label: str) -> int:
+        """Return the number of recorded values for a metric label.
 
         Args:
-            label (str): the label of the measurement
+            label: Metric label.
 
         Returns:
-            int: The count of data stored
+            Number of values recorded for the label.
         """
         return self.metric_tracker.measurement_count(label)
 
-    def get_average(self, label:str) -> float:
-        """Returns the average value for a measurement
+    def get_average(self, label: str) -> float:
+        """Return the average recorded value for a metric label.
 
         Args:
-            label (str): the label of the measurement
+            label: Metric label.
 
         Returns:
-            float: The average value
+            Average value.
         """
         return self.metric_tracker.get_average(label)
 
-    def get_latest_value(self, label:str)-> float:
-        """Gets the latest value recorded
+    def get_latest_value(self, label: str) -> float:
+        """Return the most recently recorded scalar value for a label.
 
         Args:
-            label (str): the label of the measurement
+            label: Metric label.
 
         Returns:
-            float: The latest value
+            Latest scalar value.
         """
         return self.metric_tracker.get_latest_value(label)
 
-    def get_latest_distribution(self, label:str) -> np.ndarray:
-        """Gets the latest distribution stored with a label.
+    def get_latest_distribution(self, label: str) -> np.ndarray:
+        """Return the most recently recorded distribution for a label.
 
         Args:
-            label (str): the label of the measurement
+            label: Metric label.
 
         Returns:
-            np.ndarray: The latest distribution
+            Latest distribution array.
         """
         return self.metric_tracker.get_latest_distribution(label)
 
-    def get_description(self, factory_id:str) -> str:
-        """Retrieves the description of a measurement.
+    def get_description(self, factory_id: str) -> str:
+        """Return the description for a registered measurement factory.
 
         Args:
-            factory_id (str): The measurement to retrieve
+            factory_id: Measurement factory ID.
 
         Returns:
-            str: The description
+            Factory description text.
         """
         if factory_id not in self.details.keys():
             raise IndexError("Unable to locate id %s", factory_id)
-        
         entry = self.details[factory_id]
         return entry["description"]
 
-        
     def add(self, factory_id: str, **kwargs) -> None:
         """
-        Registers a measurement factory with the engine.
+        Register a measurement factory and corresponding metric label.
 
         Args:
-            factory_id (str): The ID of the factory to register.
-            **kwargs: Additional arguments for the factory creation.
+            factory_id: Factory ID to register.
+            **kwargs: Reserved for future factory-creation options.
 
         Raises:
-            IndexError: If the factory ID is invalid or not found.
+            IndexError: If the factory ID is invalid.
         """
         try:
             entry = get_measurement_factory_entry(factory_id)
@@ -267,13 +262,13 @@ class MeasurementEngine:
         record_as: calculation_type = "avg"
     ) -> None:
         """
-        Records the results of a measurement in the tracker.
+        Aggregate measurement results and store them in the metric tracker.
 
         Args:
-            label (str): The tracker label.
-            results (list): The data to add.
-            record_as (calculation_type, optional): How to record the results. 
-                Defaults to "avg".
+            label: Metric label.
+            results: Raw results returned by a measurement.
+            record_as: Aggregation/storage mode ("avg", "sum", "max", "min",
+                "raw", or "distribution").
         """
         if len(results) == 0:
             results = [0]
@@ -293,7 +288,7 @@ class MeasurementEngine:
             value = sum(results)
             self.metric_tracker.add_data(label=label, value=value)
         elif record_as == "raw":
-            self.metric_tracker.add_raw_data(label=label, values=results)      
+            self.metric_tracker.add_raw_data(label=label, values=results)
 
     def measure(
         self,
@@ -301,19 +296,21 @@ class MeasurementEngine:
         record_as: calculation_type = "avg"
     ) -> None:
         """
-        Performs measurements on the provided dataset.
+        Run registered measurements against an input dataset.
+
+        Each measurement is first attempted with the full dataset. If argument
+        compatibility fails, the engine falls back to per-item iteration.
 
         Args:
-            data (Iterable): The dataset to measure.
-            record_as (calculation_type, optional): How to record the results. 
-                Defaults to "avg".
-        """        
+            data: Input dataset.
+            record_as: Aggregation/storage mode for recorded results.
+        """
         for label, meas in self.measurements.items():
             all_results = []
             if inspect.isclass(meas):
                 meas = cast(ClassBasedMeasurement, meas)
             else:
-                meas = cast(direct_measurement, meas)     
+                meas = cast(direct_measurement, meas)
 
             # first, does the measurement want all the data?
             if supports_measurement_type(meas, data):
@@ -323,14 +320,14 @@ class MeasurementEngine:
                 except UnableToMeasureException:
                     # NO-OP
                     pass
-            else:           
+            else:
                 # if not, then iterate over the values
                 # this is a fallback. measurements should be designed to
                 # consider iterable values.
                 for entry in data:
                     # Verify if the measurement type is supported
                     try:
-                        if supports_measurement_type(meas, entry):                    
+                        if supports_measurement_type(meas, entry):
                             result = meas(entry)
                             if isinstance(result, (int, float)):
                                 all_results.append(result)
@@ -348,6 +345,11 @@ class MeasurementEngine:
                 label=label, results=all_results, record_as=record_as)
 
     def measure_dataset_distribution(self, dataset: Iterable) -> None:
+        """Run distribution measurements that operate on the full dataset.
+
+        Args:
+            dataset: Dataset to measure.
+        """
         for label, meas in self.measurements.items():
             all_results = []
             if inspect.isclass(meas):
@@ -361,7 +363,7 @@ class MeasurementEngine:
                     all_results.append(result)
                 except UnableToMeasureException:
                     # NO-OP
-                    pass            
+                    pass
             self._update_tracker(
                 label=label,
                 results=all_results,
@@ -374,6 +376,13 @@ class MeasurementEngine:
         dataset_two: Iterable,
         record_as: calculation_type = "avg"
     ) -> None:
+        """Compare two datasets using distribution-based comparison functions.
+
+        Args:
+            dataset_one: First dataset.
+            dataset_two: Second dataset.
+            record_as: Aggregation/storage mode for recorded results.
+        """
         for label, meas in self.measurements.items():
             all_results = []
             if inspect.isclass(meas):
@@ -386,35 +395,34 @@ class MeasurementEngine:
                     all_results.append(result)
                 except UnableToMeasureException:
                     # NO-OP
-                    pass            
+                    pass
             self._update_tracker(
                 label=label,
                 results=all_results,
                 record_as=record_as
             )
-            
+
     def compare(
         self,
         data: Iterable[tuple[Any, Any]],
         record_as: calculation_type = "avg"
     ) -> None:
         """
-        Performs measurements on the provided dataset.
+        Run pairwise comparison measurements over an iterable of value pairs.
 
         Args:
-            data (Iterable): The dataset to measure.
-            record_as (calculation_type, optional): How to record the results. 
-                Defaults to "avg".
+            data: Iterable of `(a, b)` pairs to compare.
+            record_as: Aggregation/storage mode for recorded results.
         """
         for label, meas in self.measurements.items():
             all_results = []
             if inspect.isclass(meas):
                 meas = cast(ClassBasedComparison, meas)
             else:
-                meas = cast(direct_comparison, meas)                
-            for a,b in data:
+                meas = cast(direct_comparison, meas)
+            for a, b in data:
                 # Verify if the measurement type is supported
-                if supports_measurement_type(meas, a, b):                    
+                if supports_measurement_type(meas, a, b):
                     result = meas(a, b)
                     if isinstance(result, (int, float)):
                         all_results.append(result)
@@ -422,56 +430,53 @@ class MeasurementEngine:
                         all_results.extend(result)
             self._update_tracker(
                 label=label, results=all_results, record_as=record_as)
-            
+
     def save_data(self, folders: ExperimentRunFolders) -> None:
-        """Saves the data to disk using the pre-defined folder structure
+        """Persist tracked metric data to disk.
 
         Args:
-            folders (ExperimentRunFolders): The results folders
+            folders: Predefined experiment output folder structure.
         """
         self.metric_tracker.save_data(folders)
 
     def debug_report(self) -> None:
-        """Prints a report to screen. Primary purpose is development.        
-        """
+        """Print a simple console report of registered measurements."""
         print(f"------- Measurement Engine: {self.engine_id} -------")
         max_key_length = max(len(k) for k in self.measurements.keys())
         for k, v in self.measurements.items():
             print(f"{k:<{max_key_length}}  {type(v).__name__}")
 
     def report(self) -> MeasurementReport:
-        """Generates a measurement report based on the defined measurements
-        and their associated data.
-        
+        """Build and return a structured report of all recorded measurements.
+
         Returns:
-            MeasurementReport: A structured report containing engine ID and 
-                all measurement data with labels, descriptions, and values.
+            Report containing engine ID and per-measurement data.
         """
         measurements_data = []
-        
+
         for factory_id in self.measurements.keys():
             # Get all data for this measurement
             data = self.get_all_data(factory_id)
-            
+
             # Get description from details
             description = self.get_description(factory_id)
-            
+
             measurement_data = MeasurementData(
                 label=factory_id,
                 description=description,
                 data=data
             )
             measurements_data.append(measurement_data)
-        
+
         return MeasurementReport(
             engine_id=self.engine_id,
             measurements=measurements_data
-        )        
+        )
 
     def export_last_val_to_dict(self) -> dict:
-        """Obtains the latest measurement as a dictionary.
+        """Return the latest recorded value for each metric label.
 
         Returns:
-            dict: the last value recorded by metric label
+            Dictionary mapping metric label to latest recorded value.
         """
         return self.metric_tracker.export_last_val_to_dict()

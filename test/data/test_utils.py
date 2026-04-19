@@ -15,7 +15,7 @@ note: initial test cases generated via a model. modified code to meet
 
 import pytest   # type: ignore
 import pandas as pd
-from adgtk.data import utils
+import adgtk.data.utils as utils
 import tempfile
 import os
 import json

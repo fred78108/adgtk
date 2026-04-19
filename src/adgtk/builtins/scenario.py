@@ -34,6 +34,7 @@ nested_interview = [
 # Class
 # ----------------------------------------------------------------------
 
+
 class HelloWorldScenario(SupportsFactory):
     """This scenario prints hello world. It is useful for testing and
     development. More importantly it is useful for validating your
@@ -43,20 +44,34 @@ class HelloWorldScenario(SupportsFactory):
     group: ClassVar = "scenario"
     tags: ClassVar = ["demo", "development"]
     summary: ClassVar = "A simple scenario to validate your environment"
-    interview_blueprint: ClassVar =  hello_world_interview
+    interview_blueprint: ClassVar = hello_world_interview
     factory_can_init: ClassVar = True
 
-    def __init__(self, delay:float) -> None:        
+    def __init__(self, delay: float) -> None:
+        """Initializes the HelloWorldScenario.
+
+        Args:
+            delay (float): The delay before printing hello.
+        """
         super().__init__()
         self.delay = delay
 
-
     def run_scenario(
         self,
-        result_folders:ExperimentRunFolders
+        result_folders: ExperimentRunFolders
     ) -> ScenarioResults:
+        """Runs the HelloWorld scenario.
+
+        Args:
+            result_folders (ExperimentRunFolders): The folders for the run
+                results.
+
+        Returns:
+            ScenarioResults: The results of the scenario run.
+        """
         print(f"Hello World from the Scenario! - attr={self.delay}")
         return ScenarioResults(files=[])
+
 
 class NestedWorld(SupportsFactory):
     """A demo Scenario that will require multiple expansions
@@ -65,20 +80,33 @@ class NestedWorld(SupportsFactory):
     group: ClassVar = "scenario"
     tags: ClassVar = ["demo", "development"]
     summary: ClassVar = "A nested scenario to validate your environment"
-    interview_blueprint: ClassVar =  nested_interview
+    interview_blueprint: ClassVar = nested_interview
     factory_can_init: ClassVar = True
 
-    def __init__(self, delay:float, measurement:Callable) -> None:        
+    def __init__(self, delay: float, measurement: Callable) -> None:
+        """Initializes the NestedWorld scenario.
+
+        Args:
+            delay (float): The delay before printing hello.
+            measurement (Callable): A callable measurement function.
+        """
         super().__init__()
-        self.delay = delay        
+        self.delay = delay
         self.measure = measurement
 
     def run_scenario(
         self,
-        result_folders:ExperimentRunFolders
-    ) -> ScenarioResults:        
+        result_folders: ExperimentRunFolders
+    ) -> ScenarioResults:
+        """Runs the NestedWorld scenario.
+
+        Args:
+            result_folders (ExperimentRunFolders): The folders for the run
+                results.
+
+        Returns:
+            ScenarioResults: The results of the scenario run.
+        """
         print(f"Hello NestedWorld from the Scenario! - attr={self.delay}")
         print(f"MEAS: {self.measure}")
         return ScenarioResults(files=[])
-
-

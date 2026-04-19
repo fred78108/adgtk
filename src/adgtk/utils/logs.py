@@ -9,6 +9,7 @@ import warnings
 from adgtk.common.defaults import LOG_DIR, SCENARIO_LOGGER_NAME
 from .file import clear_folder
 
+
 def get_scenario_logger() -> logging.Logger:
     """
     Retrieve the logger for the current scenario.
@@ -24,9 +25,11 @@ def get_scenario_logger() -> logging.Logger:
     """
     if SCENARIO_LOGGER_NAME in logging.Logger.manager.loggerDict:
         return logging.getLogger(SCENARIO_LOGGER_NAME)
-    
+
     # not created. using default scenario logger
-    print("WARNING: No active scenario found. Using the framework scenario logger")
+    msg = ("WARNING: No active scenario found. Using the "
+           "framework scenario logger.")
+    print(msg)
     logger = create_logger(
         logfile="default.scenario.log",
         logger_name=SCENARIO_LOGGER_NAME,
@@ -35,8 +38,10 @@ def get_scenario_logger() -> logging.Logger:
         log_propagate=False,
         mode="w"
     )
-    logger.info("---- created due to get_scenario_logger w/out a scenario ----")
+    logger.info(
+        "---- created due to get_scenario_logger w/out a scenario ----")
     return logger
+
 
 def create_logger(
     logfile: str,
@@ -92,8 +97,9 @@ def create_logger(
     log_path = "default"
     if subdir in ["runs", "agent"]:
         if experiment_name is None:
-            raise ValueError("Experiment name is required when subdir is 'runs'")
-        full_log_dir = os.path.join(section_dir, experiment_name)        
+            raise ValueError(
+                "Experiment name is required when subdir is 'runs'")
+        full_log_dir = os.path.join(section_dir, experiment_name)
         os.makedirs(full_log_dir, exist_ok=True)
         # modifier for agent
         if subdir == "agent":
@@ -199,6 +205,7 @@ def set_logfile(
 
 role_types = Literal["human", "ai", "system", "tool", "error", "default"]
 
+
 class RoleColorFormatter(logging.Formatter):
     """Formats based on role. Sets the color."""
     ROLE_COLORS = {
@@ -211,16 +218,25 @@ class RoleColorFormatter(logging.Formatter):
     }
 
     def format(self, record):
+        """Formats the log record with role-based colors.
+
+        Args:
+            record (logging.LogRecord): The log record to format.
+
+        Returns:
+            str: The formatted log message.
+        """
         role = getattr(record, 'role', 'default')
         color = self.ROLE_COLORS.get(role, self.ROLE_COLORS['default'])
         line = "-" * 30
-        bold_role = f"\033[1m{role.upper()}\033[0m"        
+        bold_role = f"\033[1m{role.upper()}\033[0m"
 
         # Split the message into lines
         message_lines = str(record.msg).splitlines()
         if message_lines:
             # Format the first line with the role and color
-            message_lines[0] = f"{line} {color}{bold_role} {line}\n{message_lines[0]}\033[0m"
+            message_lines[0] = (f"{line} {color}{bold_role} {line}"
+                                f"\n{message_lines[0]}\033[0m")
         # Join the lines back together for display
         formatted_message = "\n".join(message_lines)
 
@@ -228,8 +244,7 @@ class RoleColorFormatter(logging.Formatter):
         return formatted_message
 
 
-
-def clear_llm_logs(experiment_name:str) -> None:
+def clear_llm_logs(experiment_name: str) -> None:
     """Clears the LLM dedicated log folder for an experiment
 
     Args:
@@ -243,7 +258,8 @@ def clear_llm_logs(experiment_name:str) -> None:
     except FileNotFoundError:
         pass
 
-def clear_agent_logs(experiment_name:str) -> None:
+
+def clear_agent_logs(experiment_name: str) -> None:
     """Clears the agent dedicated log folder for an experiment
 
     Args:
@@ -261,7 +277,7 @@ def clear_agent_logs(experiment_name:str) -> None:
 def create_llm_logger(
     logfile: str,
     logger_name: str,
-    experiment_name: str,    
+    experiment_name: str,
     log_level: int = logging.INFO,
     log_to_console: bool = True,
     log_propagate: bool = False,
@@ -289,12 +305,13 @@ def create_llm_logger(
             ("a" for append, "w" for write). Defaults to "a".
 
     Returns:
-        logging.Logger: Configured logger instance with role-based color formatting.
+        logging.Logger: Configured logger instance with role-based
+            color formatting.
     """
     section_dir = os.path.join(LOG_DIR, "runs")
     os.makedirs(LOG_DIR, exist_ok=True)
     os.makedirs(section_dir, exist_ok=True)
-    
+
     full_log_dir = os.path.join(section_dir, experiment_name)
     os.makedirs(full_log_dir, exist_ok=True)
     llm_dir = os.path.join(full_log_dir, "llm")

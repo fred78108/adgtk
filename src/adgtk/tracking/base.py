@@ -1,4 +1,7 @@
 """Internal tracking. Provides useful data structures.
+
+TODO: Need to improve handling of raw. recall eda_3 and trying to use
+the batch_ measurements
 """
 
 import copy
@@ -19,15 +22,23 @@ DEBUG_TO_CONSOLE = False
 # Tracking of data
 # ----------------------------------------------------------------------
 
+
 class MetricTracker():
     """Used for tracking metrics."""
 
     def __init__(
         self,
-        name:str="experiment",
-        purpose:PurposeTypes="other"
+        name: str = "experiment",
+        purpose: PurposeTypes = "other"
     ):
-        self.name = name    # for saving to disk
+        """Initializes the MetricTracker.
+
+        Args:
+            name (str): The name of the tracker. Defaults to "experiment".
+            purpose (PurposeTypes): The purpose of the tracked data.
+                Defaults to "other".
+        """
+        self.name = name
         self.purpose: PurposeTypes = purpose
         self.metrics: dict[str, list] = {}
         self.metadata: dict[str, dict] = {}
@@ -38,14 +49,15 @@ class MetricTracker():
         label: str,
         metadata: Union[dict, None] = None
     ) -> bool:
-        """Registers a metric.
+        """Registers a metric for tracking.
 
-        :param label: The label of the metric
-        :type label: str
-        :param metadata: _description_
-        :type metadata: Union[dict, None]
-        :return: T: created, F: did not create
-        :rtype: bool
+        Args:
+            label (str): The label of the metric.
+            metadata (Optional[dict]): Additional metadata for the metric.
+                Defaults to None.
+
+        Returns:
+            bool: True if created, False if it already exists.
         """
 
         if metadata is not None:
@@ -61,24 +73,21 @@ class MetricTracker():
         return False
 
     def add_raw_data(self, label: str, values: Iterable) -> None:
-        """Adds data as-is by iterating through and adding one by one.
+        """Adds raw data by iterating through values and adding each.
 
-        :param label: The label of the metric
-        :type label: str
-        :param values: the data to add
-        :type values: Iterable
+        Args:
+            label (str): The label of the metric.
+            values (Iterable): The data values to add.
         """
         for data in values:
             self.add_data(label=label, value=data)
 
     def add_data(self, label: str, value: Union[int, float]) -> None:
-        """Adds data
+        """Adds a single data point to a metric.
 
-        :param label: The label of the metric
-        :type label: str
-        :raises KeyError: Label is not found
-        :param value: the data to add
-        :type Union[int, float]
+        Args:
+            label (str): The label of the metric.
+            value (Union[int, float]): The value to add.
         """
         if label not in self.metrics:
             self.metrics[label] = []
@@ -90,12 +99,13 @@ class MetricTracker():
             print(f"Updated Metrics: {self.metrics[label]}")
 
     def metric_exists(self, label: str) -> bool:
-        """Does a metric exist?
+        """Checks if a metric exists.
 
-        :param label: The label of the metric
-        :type label: str
-        :return: T: exists, F: does not
-        :rtype: bool
+        Args:
+            label (str): The label of the metric.
+
+        Returns:
+            bool: True if it exists, False otherwise.
         """
         if label not in self.metrics:
             return False
@@ -103,10 +113,10 @@ class MetricTracker():
         return True
 
     def remove_metric(self, label: str) -> None:
-        """Removes a metric from being tracked
+        """Removes a metric and its metadata from being tracked.
 
-        :param label: The label of the metric to remove
-        :type label: str
+        Args:
+            label (str): The label of the metric to remove.
         """
         if label in self.metrics:
             del self.metrics[label]
@@ -115,21 +125,24 @@ class MetricTracker():
             del self.metadata[label]
 
     def metric_labels(self) -> list:
-        """Gets a list of metrics currently tracking
+        """Gets a list of currently tracked metric labels.
 
-        :return: a list of the labels
-        :rtype: list
+        Returns:
+            list: A list of metric labels.
         """
         return list(self.metrics.keys())
 
     def get_latest_value(self, label: str) -> float:
-        """Gets the latest value from a label
+        """Gets the latest value recorded for a metric.
 
-        :param label: The label of the metric to get latest value
-        :type label: str
-        :raises KeyError: Invalid Metric
-        :return: the latest value
-        :rtype: float
+        Args:
+            label (str): The label of the metric.
+
+        Returns:
+            float: The latest value, or 0 if no data is present.
+
+        Raises:
+            KeyError: If the metric label is not found.
         """
         if label not in self.metrics:
             msg = f"Requested invalid label: {label}"
@@ -139,15 +152,19 @@ class MetricTracker():
             return 0
         else:
             return self.metrics[label][-1]
-        
-    def get_latest_distribution(self, label: str) -> np.ndarray:
-        """Gets the latest distribution from a label
 
-        :param label: The label of the metric to get latest value
-        :type label: str
-        :raises KeyError: Invalid Metric
-        :return: the latest value
-        :rtype: np.ndarray
+    def get_latest_distribution(self, label: str) -> np.ndarray:
+        """Gets the latest distribution (array) recorded for a metric.
+
+        Args:
+            label (str): The label of the metric.
+
+        Returns:
+            np.ndarray: The latest distribution, or an empty array if
+                no data.
+
+        Raises:
+            KeyError: If the metric label is not found.
         """
         if label not in self.metrics:
             msg = f"Requested invalid label: {label}"
@@ -159,16 +176,19 @@ class MetricTracker():
             return self.metrics[label][-1]
 
     def get_average(self, label: str) -> float:
-        """Returns the average of all stored values for the label
+        """Calculates the average of all stored values for a metric.
 
-        :param label: The label of the metric to get avg of
-        :type label: str
-        :raises KeyError: Invalid Metric
-        :return: the average value
-        :rtype: float
+        Args:
+            label (str): The label of the metric.
+
+        Returns:
+            float: The average value, or 0 if no data is present.
+
+        Raises:
+            KeyError: If the metric label is not found.
         """
         if label not in self.metrics:
-            msg = f"Requested invalid label: {label}" 
+            msg = f"Requested invalid label: {label}"
             if DEBUG_TO_CONSOLE:
                 print(f"METRIC_TRACKER_DATA: {self.metrics}")
                 print(msg)
@@ -180,13 +200,16 @@ class MetricTracker():
             return sum(self.metrics[label]) / len(self.metrics[label])
 
     def get_sum(self, label: str) -> float:
-        """Returns the sum of all stored values for the label
+        """Calculates the sum of all stored values for a metric.
 
-        :param label: The label of the metric to get sum of
-        :type label: str
-        :raises KeyError: Invalid Metric
-        :return: the sum of all stored values
-        :rtype: float
+        Args:
+            label (str): The label of the metric.
+
+        Returns:
+            float: The sum of values, or 0 if no data is present.
+
+        Raises:
+            KeyError: If the metric label is not found.
         """
         if label not in self.metrics:
             msg = f"Requested invalid label: {label}"
@@ -198,33 +221,33 @@ class MetricTracker():
             return sum(self.metrics[label])
 
     def clear_metric(self, label: str) -> None:
-        """Clears the values of a  metric
+        """Clears all values for a specific metric.
 
-        :param label: The label of the metric to clear data from
-        :type label: str
+        Args:
+            label (str): The label of the metric to clear.
         """
         self.metrics[label] = []
 
     def clear_results(self) -> None:
-        """Clears all prior measurement results
-        """
+        """Clears measurement results for all tracked metrics."""
         for key in self.metrics.keys():
             self.metrics[key] = []
 
     def reset(self) -> None:
-        """Deletes all data and labels and resets to no metrics tracked.
-        """
+        """Deletes all metrics and metadata, resetting the tracker."""
         self.metrics = {}
 
     def measurement_count(self, label: str) -> int:
-        """Returns the count of observations for a metric
+        """Returns the count of observations for a metric.
 
+        Args:
+            label (str): The label of the metric.
 
-        :param label: The label of the metric to get count of
-        :type label: str
-        :raises KeyError: Invalid Metric
-        :return: the count of all entries
-        :rtype: int
+        Returns:
+            int: The count of all entries for the metric.
+
+        Raises:
+            KeyError: If the metric label is not found.
         """
         if label not in self.metrics:
             raise KeyError("Invalid metric")
@@ -232,13 +255,16 @@ class MetricTracker():
         return len(self.metrics[label])
 
     def get_all_data(self, label: str) -> list:
-        """Gets all data for a metric.
+        """Retrieves a copy of all data points for a metric.
 
-        :param label: The label of the metric to get data from
-        :type label: str
-        :raises KeyError: Invalid Metric
-        :return: the data as a list
-        :rtype: list
+        Args:
+            label (str): The label of the metric.
+
+        Returns:
+            list: A list containing all data points.
+
+        Raises:
+            KeyError: If the metric label is not found.
         """
         if self.metric_exists(label):
             return copy.deepcopy(self.metrics[label])
@@ -248,6 +274,14 @@ class MetricTracker():
         raise KeyError("Invalid metric")
 
     def get_metadata(self, label: str) -> dict:
+        """Retrieves a copy of the metadata for a metric.
+
+        Args:
+            label (str): The label of the metric.
+
+        Returns:
+            dict: A dictionary containing the metadata.
+        """
         if label in self.metadata:
             return copy.deepcopy(self.metadata[label])
 
@@ -256,27 +290,27 @@ class MetricTracker():
         return {}
 
     def save_data(self, folders: ExperimentRunFolders) -> None:
-        """Saves the data to disk using the pre-defined folder structure
+        """Saves the metric data to disk.
 
         Args:
-            folders (ExperimentRunFolders): The results folders
+            folders (ExperimentRunFolders): The experiment result folders.
         """
         # prepare data
         labels = self.metric_labels()
         out_data = {}
         for label in labels:
             # always save all data
-            data = self.get_all_data(label)                
+            data = self.get_all_data(label)
             # now set the data, if exists
             if len(data) > 0:
                 out_data[label] = data
             else:
                 msg = f"{self.name} metric tracker had no data recorded "\
                       f"for {label}"
-                self.logger.warning(msg)                
+                self.logger.warning(msg)
                 out_data[label] = []
 
-        # write to disk        
+        # write to disk
         for key, data in out_data.items():
             filename = os.path.join(
                         folders.metrics,
@@ -292,14 +326,14 @@ class MetricTracker():
             exp_journal.add_file(filename=filename, purpose=self.purpose)
 
     def export_last_val_to_dict(self) -> dict:
-        """Obtains the latest measurement as a dictionary.
+        """Exports the latest recorded value for each metric to a dict.
 
         Returns:
-            dict: the last value recorded by metric label
-        """        
+            dict: A mapping of metric labels to their latest values.
+        """
         # prepare data
         labels = self.metric_labels()
-        out_data = {}        
+        out_data = {}
         for label in labels:
             out_data[label] = self.get_latest_value(label)
         return out_data
