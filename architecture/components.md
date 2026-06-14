@@ -1,6 +1,6 @@
 # Component Architecture
 
-**Version:** 0.3.0b0
+**Version:** 0.3.0b1
 **Last Updated:** 2026-06-07 (updated: rec 1.2 task page, SSE protocol, route map)
 
 ---

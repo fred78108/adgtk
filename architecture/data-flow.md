@@ -1,6 +1,6 @@
 # Data Flow
 
-**Version:** 0.3.0b0
+**Version:** 0.3.0b1
 **Last Updated:** 2026-06-07 (updated: rec 1.2 web-initiated run flow; batch section updated to ADR-009)
 
 ---

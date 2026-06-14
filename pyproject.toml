@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adgtk"
-version = "0.3.0b0"
+version = "0.3.0b1"
 authors = [{ name = "Fred Diehl", email = "fred@chaosbyderf.com" }]
 description = "A framework for researching agentic systems."
-readme = "README.rst"
+readme = "README.md"
 requires-python = ">=3.12"
 classifiers = [
   "Development Status :: 3 - Alpha",
