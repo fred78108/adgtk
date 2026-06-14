@@ -1,0 +1,25 @@
+{% if recent_runs %}
+  {% for run in recent_runs %}
+  <a href="/results/{{ run.experiment_name }}/{{ run.run_id }}"
+     class="flex items-center justify-between px-6 py-3
+            hover:bg-slate-50 transition-colors">
+    <div>
+      <p class="text-sm font-medium text-slate-900">{{ run.run_id }}</p>
+      <p class="text-xs text-slate-500">{{ run.experiment_name }}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      {% set vc = {
+        'pass':          'bg-green-100 text-green-800',
+        'fail':          'bg-red-100   text-red-800',
+        'inconclusive':  'bg-amber-100 text-amber-800',
+      }.get(run.verdict, 'bg-slate-100 text-slate-600') %}
+      <span class="inline-flex items-center px-2 py-0.5 rounded
+                   text-xs font-medium {{ vc }}">
+        {{ run.verdict }}
+      </span>
+    </div>
+  </a>
+  {% endfor %}
+{% else %}
+  <p class="px-6 py-6 text-sm text-slate-400">No runs yet.</p>
+{% endif %}

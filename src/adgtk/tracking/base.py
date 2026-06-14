@@ -7,11 +7,12 @@ the batch_ measurements
 import copy
 import csv
 import os
+import logging
 from typing import Iterable, Union
 import numpy as np
 from adgtk.data.structure import PurposeTypes
-import adgtk.tracking.journal as exp_journal
-from adgtk.utils import get_scenario_logger
+import adgtk.tracking.observations as observations
+from adgtk.utils.defaults import SCENARIO_LOGGER_NAME
 from .structure import ExperimentRunFolders
 # ----------------------------------------------------------------------
 # Constants
@@ -42,7 +43,7 @@ class MetricTracker():
         self.purpose: PurposeTypes = purpose
         self.metrics: dict[str, list] = {}
         self.metadata: dict[str, dict] = {}
-        self.logger = get_scenario_logger()
+        self.logger = logging.getLogger(SCENARIO_LOGGER_NAME)
 
     def register_metric(
         self,
@@ -323,7 +324,7 @@ class MetricTracker():
             self.logger.info(
                 f"Saved {self.name}.{key} metric data to {filename}")
 
-            exp_journal.add_file(filename=filename, purpose=self.purpose)
+            observations.add_artifact(path=filename, purpose=self.purpose)
 
     def export_last_val_to_dict(self) -> dict:
         """Exports the latest recorded value for each metric to a dict.

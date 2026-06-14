@@ -14,17 +14,20 @@ note: initial test cases generated via a model. modified code to meet
 
 import os
 import pytest   # type: ignore
-from adgtk.data.tracking import JsonFileTracker
+from adgtk.tracking.dataset import JsonFileTracker
+
 
 @pytest.fixture
 def tmp_inventory(tmp_path):
     return tmp_path / "inventory.json"
+
 
 @pytest.fixture
 def fake_file(tmp_path):
     file = tmp_path / "example.csv"
     file.write_text("col1,col2\nval1,val2\n")
     return file
+
 
 def make_tracker(tmp_inventory):
     return JsonFileTracker(label="test", inventory_file=str(tmp_inventory))
@@ -42,9 +45,9 @@ def test_register_file_adds_to_inventory(tmp_inventory, fake_file):
 def test_register_file_raises_on_duplicate_id(tmp_inventory, fake_file):
     tracker = make_tracker(tmp_inventory)
     file_id = "test-id"
-    tracker.register_file(str(fake_file), encoding="csv", id=file_id)
+    tracker.register_file(str(fake_file), encoding="csv", file_id=file_id)
     with pytest.raises(IndexError):
-        tracker.register_file(str(fake_file), encoding="csv", id=file_id)
+        tracker.register_file(str(fake_file), encoding="csv", file_id=file_id)
 
 
 def test_get_file_id_returns_correct_id(tmp_inventory, fake_file):

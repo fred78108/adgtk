@@ -2,8 +2,8 @@
 support the society.
 """
 
-from typing import get_args, Literal, Optional, Protocol, Union
-from pydantic import BaseModel, Field
+from typing import Any, get_args, Literal, Optional, Protocol, Union
+from pydantic import BaseModel, ConfigDict, Field
 import datetime
 
 
@@ -38,6 +38,9 @@ FileEncodingTypes = Literal[
 FileActionTypes = Literal["copy", "move", "none"]
 
 PurposeTypes = Literal[
+    "test",
+    "train",
+    "validate",
     "generated",
     "measurement",
     "messages",
@@ -73,13 +76,15 @@ class FileMetaData(BaseModel):
 
 class FileDefinition(BaseModel):
     """Defines a file and how to process it. More an internal structure."""
+    model_config = ConfigDict(extra="ignore")
+
     file_id: str        # used for indexing multiple files. must be unique
     filename: str
     path: str
     encoding: FileEncodingTypes
-    # metadata: Optional[FileMetaData] = None
-    metadata_file: Optional[str] = None
     tags: Optional[Union[str, list[str]]] = None
+    description: Optional[str] = None
+    extended_metadata: Optional[dict[str, Any]] = None
 
 
 class DataDefinition(BaseModel):
@@ -107,12 +112,6 @@ class FileManagerConfig(BaseModel):
     load_on_init: bool = True
 
 
-class FileEntry(BaseModel):
-    """Used for ScenarioResults"""
-    filename: str
-    purpose: PurposeTypes
-
-
 # ----------------------------------------------------------------------
 # Protocol
 # ----------------------------------------------------------------------
@@ -133,12 +132,13 @@ class CanTrackFiles(Protocol):
         self,
         source_file: str,
         encoding: FileEncodingTypes,
-        metadata_file: Optional[str] = None,
         tags: Optional[Union[str, list[str]]] = None,
-        id: Optional[str] = None
+        file_id: Optional[str] = None,
+        description: Optional[str] = None,
+        extended_metadata: Optional[dict] = None,
     ) -> str:
         ...
 
-    def retire_file(self, id: str) -> None: ...
+    def retire_file(self, file_id: str) -> None: ...
 
-    def get_file_definition(self, id: str) -> FileDefinition: ...
+    def get_file_definition(self, file_id: str) -> FileDefinition: ...

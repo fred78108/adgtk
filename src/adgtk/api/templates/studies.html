@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}— Studies{% endblock %}
+{% block content %}
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-slate-900">Studies</h1>
+  <p class="text-sm text-slate-500 mt-1">Cross-experiment rollup reports</p>
+</div>
+
+<div id="study-flash" class="mb-4"></div>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+  <!-- Study list -->
+  <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+    <div class="px-6 py-4 border-b border-slate-200">
+      <h2 class="text-sm font-semibold text-slate-900">Saved studies</h2>
+    </div>
+    {% if studies %}
+    <ul class="divide-y divide-slate-100">
+      {% for study in studies %}
+      <li class="flex items-center justify-between px-6 py-3">
+        <span class="font-mono text-sm text-slate-900">{{ study }}</span>
+        <button hx-post="/studies/{{ study }}/run"
+                hx-target="#study-flash"
+                hx-swap="innerHTML"
+                class="px-3 py-1 rounded bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700">
+          Run
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="px-6 py-8 text-sm text-slate-400">No studies yet. Create one →</p>
+    {% endif %}
+  </div>
+
+  <!-- Create study form -->
+  <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+    <div class="px-6 py-4 border-b border-slate-200">
+      <h2 class="text-sm font-semibold text-slate-900">New study</h2>
+    </div>
+    <div class="px-6 py-4">
+      <form hx-post="/studies"
+            hx-target="#study-flash"
+            hx-swap="innerHTML">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Name</label>
+            <input name="name" required
+                   class="w-full rounded border border-slate-300 px-3 py-1.5 text-sm font-mono
+                          focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Description</label>
+            <input name="description"
+                   class="w-full rounded border border-slate-300 px-3 py-1.5 text-sm
+                          focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Experiments</label>
+            <div class="border border-slate-300 rounded p-3 max-h-48 overflow-y-auto space-y-1.5">
+              {% for exp in experiments %}
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" name="experiments" value="{{ exp }}"
+                       class="rounded border-slate-300 text-indigo-600">
+                <span class="font-mono">{{ exp }}</span>
+              </label>
+              {% else %}
+              <p class="text-xs text-slate-400">No experiments with results found.</p>
+              {% endfor %}
+            </div>
+          </div>
+          <button type="submit"
+                  class="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium
+                         text-white hover:bg-indigo-700">
+            Create study
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

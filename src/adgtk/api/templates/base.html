@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADGTK {% block title %}{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+  <script src="https://unpkg.com/htmx-ext-sse@2.2.3/sse.js"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline; }
+    .htmx-request.htmx-indicator { display: inline; }
+  </style>
+</head>
+<body class="h-full" x-data>
+<div class="flex h-full min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="w-56 bg-slate-800 flex-shrink-0 flex flex-col">
+    <div class="px-4 py-5 border-b border-slate-700">
+      <span class="text-lg font-bold text-white tracking-tight">ADGTK</span>
+      <p class="text-xs text-slate-400 mt-0.5 truncate">{{ project_name | default('') }}</p>
+    </div>
+    <nav class="flex-1 px-2 py-4 space-y-0.5">
+      {% set nav = [
+        ('/', 'dashboard',    'Dashboard'),
+        ('/experiments', 'experiments', 'Experiments'),
+        ('/results',     'results',     'Results'),
+        ('/tasks',       'tasks',       'Tasks'),
+        ('/batches',     'batches',     'Batches'),
+        ('/studies',     'studies',     'Studies'),
+        ('/factory',     'factory',     'Factory'),
+        ('/datasets',    'datasets',    'Datasets'),
+        ('/logs',        'logs',        'Logs'),
+        ('/settings',    'settings',    'Settings'),
+      ] %}
+      {% for href, key, label in nav %}
+      <a href="{{ href }}"
+         class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                {% if active == key %}bg-slate-700 text-white{% else %}text-slate-300 hover:bg-slate-700 hover:text-white{% endif %}">
+        {{ label }}
+      </a>
+      {% endfor %}
+    </nav>
+
+    <!-- Active experiment indicator (polls every 3s) -->
+    <div id="active-task-indicator"
+         hx-get="/tasks/active-indicator"
+         hx-trigger="load, every 3s"
+         hx-target="#active-task-indicator"
+         hx-swap="outerHTML">
+    </div>
+
+    <div class="px-2 py-3 border-t border-slate-700">
+      <a href="https://fred78108.github.io/adgtk" target="_blank" rel="noopener"
+         class="flex items-center px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+        Docs ↗
+      </a>
+    </div>
+    <div class="px-4 py-3 border-t border-slate-700">
+      <span class="text-xs text-slate-500">v0.3</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 overflow-auto">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

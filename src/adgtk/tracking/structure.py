@@ -10,29 +10,47 @@ Structures
 
 from dataclasses import asdict, dataclass
 import datetime
-from typing import ClassVar, Optional
+from typing import ClassVar, Literal, Optional
 import uuid
 from pydantic import BaseModel
-
+from adgtk.utils.defaults import RUN_FOLDER_VERSION
+from adgtk.data.structure import PurposeTypes
 # ----------------------------------------------------------------------
 # Constants
 # ----------------------------------------------------------------------
 
-EXP_RUN_DIR = "runs"
-EXP_OTHER_DIR = "other"
-EXP_METRICS_FOLDER = "metrics"
-EXP_MODEL_DIR = "models"
-EXP_IMG_FOLDER = "images"
-EXP_DATASET_FOLDER = "datasets"
-EXP_RESULTS_FOLDER = "results"
-EXP_MODEL_TRAIN_LOG = "model_train_runs"
-TRACKING_FOLDER = ".tracking"
+# EXP_RUN_DIR = "runs"
+# EXP_OTHER_DIR = "other"
+# EXP_METRICS_FOLDER = "metrics"
+# EXP_MODEL_DIR = "models"
+# EXP_IMG_FOLDER = "images"
+# EXP_DATASET_FOLDER = "datasets"
+# EXP_RESULTS_FOLDER = "results"
+# EXP_MODEL_TRAIN_LOG = "model_train_runs"
+# TRACKING_FOLDER = ".tracking"
 
-RUN_FOLDER_VERSION = 1.1                # Ease of migration
+# RUN_FOLDER_VERSION = 1.2                # Ease of migration
 
 # ----------------------------------------------------------------------
 # Structures - User-facing models (external data)
 # ----------------------------------------------------------------------
+
+
+class ArtifactEntry(BaseModel):
+    """A file produced during a run, registered for the manifest."""
+    path: str
+    purpose: PurposeTypes
+    size_bytes: Optional[int] = None
+
+
+class MetricSummary(BaseModel):
+    """Descriptive statistics for a single tracked metric."""
+    label: str
+    n: int
+    mean: float
+    std: float
+    min: float
+    max: float
 
 
 class CommentModel(BaseModel):
@@ -51,6 +69,19 @@ class ExperimentEntryModel(BaseModel):
     id: Optional[str] = str(uuid.uuid4())
     timestamp: Optional[str] = datetime.datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S")
+
+
+class RunEntryModel(BaseModel):
+    """Tracks an individual experiment run."""
+    run_id: str
+    experiment_name: str
+    timestamp_start: Optional[str] = None
+    timestamp_end: Optional[str] = None
+    duration_seconds: Optional[float] = None
+    status: Literal["complete", "incomplete", "results_missing"] = "incomplete"
+    verdict: Literal["pass", "fail", "inconclusive", "unknown"] = "unknown"
+    results_path: str
+    tags: dict[str, str] = {}
 
 
 class PrefixModel(BaseModel):
@@ -87,6 +118,7 @@ class ExperimentRunFolders():
     common: str
     model_dir: str
     train_log_dir: str
+    llm_dir: str
 
     def to_dict(self) -> dict:
         """Converts the dataclass to a dictionary.

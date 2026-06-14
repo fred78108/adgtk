@@ -11,8 +11,10 @@ py -m pytest -s test/common/test_results.py
 
 """
 
-# setup logfile for this and sub-modules
-from adgtk.tracking.structure import (
+import logging
+import os
+from adgtk import __version__ as adgtk_ver
+from adgtk.utils.defaults import (
     EXP_DATASET_FOLDER,
     EXP_METRICS_FOLDER,
     EXP_IMG_FOLDER,
@@ -20,22 +22,14 @@ from adgtk.tracking.structure import (
     EXP_OTHER_DIR,
     EXP_RESULTS_FOLDER,
     EXP_MODEL_TRAIN_LOG,
-    ExperimentRunFolders
-)
-from adgtk.common.defaults import (
     BATCH_DEF_DIR,
     EXP_DEF_DIR,
     LOG_DIR,
-    SHARED_MODEL_DIR)
-import os
-from adgtk.utils import create_logger
-
-# Set up module-specific logger
-_logger = create_logger(
-    "adgtk.runner.log",
-    logger_name=__name__,
-    subdir="framework"
+    SHARED_MODEL_DIR,
 )
+from adgtk.tracking.structure import ExperimentRunFolders
+
+_logger = logging.getLogger(__name__)
 
 
 # ----------------------------------------------------------------------
@@ -44,6 +38,57 @@ _logger = create_logger(
 DEBUG = False
 
 CONCLUSION = "conclusions"
+
+README_FILENAME = "README.md"
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+
+
+def _write_run_readme(
+    root_dir: str,
+    experiment_name: str,
+    run_id: str
+) -> None:
+    """Writes a README.md to the run root folder describing each subfolder.
+
+    Args:
+        root_dir (str): The root directory of the run.
+        experiment_name (str): The name of the experiment.
+        run_id (str): The unique identifier for this run.
+    """
+    content = f"""# Experiment Run: {experiment_name} / {run_id}
+
+This folder contains the outputs of a single experiment run.
+
+## Folder Reference
+
+| Folder | Purpose |
+|--------|---------|
+| `datasets/` | Input datasets and data files used during this run |
+| `metrics/` | Evaluation results, scores, and performance metrics |
+| `images/` | Plots, charts, and other visualizations |
+| `models/` | Model artifacts (weights, checkpoints) saved during this run |
+| `model_train_runs/` | Training logs and per-epoch checkpoints |
+| `llm/` | LLM prompt/response logs and related outputs |
+| `conclusions/` | Summaries, notes, and conclusions drawn from this run |
+| `other/` | Miscellaneous files that do not belong in the above folders |
+
+## Shared Folder
+
+The `common/` folder lives one level up (next to the numbered run folders) and
+holds resources shared across all runs of this experiment — for example,
+pre-processed datasets or reference files that every run can read.
+
+## ADGTK
+These results were created with ADGTK version {adgtk_ver}.
+"""
+    readme_path = os.path.join(root_dir, README_FILENAME)
+    with open(readme_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    _logger.info("Wrote run README to %s", readme_path)
+
 
 # ----------------------------------------------------------------------
 # Helper functions
@@ -74,7 +119,8 @@ def _build_run_dirs(root_dir: str, experiment_name) -> ExperimentRunFolders:
         experiment_name=experiment_name,
         common=os.path.join(EXP_RESULTS_FOLDER, experiment_name, "common"),
         model_dir=os.path.join(root_dir, EXP_MODEL_DIR),
-        train_log_dir=os.path.join(root_dir, EXP_MODEL_TRAIN_LOG)
+        train_log_dir=os.path.join(root_dir, EXP_MODEL_TRAIN_LOG),
+        llm_dir=os.path.join(root_dir, "llm"),
     )
 
 
@@ -207,6 +253,11 @@ def setup_run(experiment_name: str, run_id: str) -> ExperimentRunFolders:
     for key, folder in folders.items():
         if key != "experiment_name":
             os.makedirs(folder, exist_ok=True)
+    # build the readme for the tree folder structure here
+    _write_run_readme(
+        root_dir=root_dir,
+        experiment_name=experiment_name,
+        run_id=run_id)
 
     # now verify and create ExperimentRunFolders
     listing = build_folder_listing(

@@ -5,7 +5,6 @@ Structures
  - User-facing models: validated, serialized via BaseModel
  - Internal helpers: lightweight dataclasses, not validated
 """
-
 from typing import (
     Any,
     Callable,
@@ -15,7 +14,7 @@ from typing import (
     get_args,
     runtime_checkable)
 from pydantic import BaseModel
-from adgtk.data.structure import FileEntry
+from adgtk.experiment.result import RunResult
 from adgtk.tracking.structure import ExperimentRunFolders
 
 # ----------------------------------------------------------------------
@@ -25,7 +24,9 @@ from adgtk.tracking.structure import ExperimentRunFolders
 EXPERIMENT_LABEL = "experiment"
 SCENARIO_LABEL = "scenario"
 
-AttributeValueType = Union["AttributeEntry", dict, list, str, bool, float, int]
+AttributeValueType = Union[
+    "AttributeEntry", dict, list, str, bool, float, int
+]
 
 
 # ----------------------------------------------------------------------
@@ -59,26 +60,14 @@ AttributeEntry.model_rebuild()  # str to Type AttributeEntry for Union
 
 
 class ExperimentDefinition(AttributeEntry):
-    """The root of any experiment has two extra items the name and
-    description. This allows for easy management and prediction of what
-    to expect on load."""
-    name: str
+    """The root of any experiment definition. The experiment name is derived
+    from the blueprint filename (stem without .yaml extension)."""
     description: str
 
 
 class BatchDefinition(BaseModel):
     name: str
     experiments: list[str]
-
-
-class ScenarioResults(BaseModel):
-    """The results of an experiment"""
-    files: list[FileEntry]
-
-
-# ----------------------------------------------------------------------
-# Structures - Internal helpers (non-validated)
-# ----------------------------------------------------------------------
 
 
 # ----------------------------------------------------------------------
@@ -91,8 +80,9 @@ class ScenarioProtocol(Protocol):
     def run_scenario(
         self,
         result_folders: ExperimentRunFolders
-    ) -> ScenarioResults:  # type: ignore
+    ) -> RunResult:
         """Runs the scenario as defined"""
+        ...
 
 
 # ----------------------------------------------------------------------

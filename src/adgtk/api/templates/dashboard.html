@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}— Dashboard{% endblock %}
+{% block content %}
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-slate-900">Dashboard</h1>
+  <p class="text-sm text-slate-500 mt-1">{{ project_name }}</p>
+</div>
+
+<!-- Stats row -->
+<div id="dashboard-stats"
+     class="grid grid-cols-2 gap-4 mb-8 sm:grid-cols-4"
+     hx-get="/dashboard/stats"
+     hx-trigger="dashboardRefresh from:body"
+     hx-swap="innerHTML">
+  {% include 'partials/dashboard_stats.html' %}
+</div>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+  <!-- Quick run -->
+  <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+    <div class="px-6 py-4 border-b border-slate-200">
+      <h2 class="text-sm font-semibold text-slate-900">Quick run</h2>
+    </div>
+    <div class="px-6 py-4" x-data="{taskId: null}">
+      <form @submit.prevent="
+              const sel = $el.querySelector('select');
+              const name = sel.value;
+              if (!name) return;
+              htmx.ajax('POST', '/experiments/' + name + '/run', {target: '#dash-output', swap: 'innerHTML'});
+            ">
+        <div class="flex gap-3">
+          <select class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">Select experiment…</option>
+            {% for exp in blueprints %}
+            <option value="{{ exp.name }}">{{ exp.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit"
+                  class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium
+                         hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            Run
+          </button>
+        </div>
+      </form>
+      <div id="dash-output" class="mt-4"></div>
+    </div>
+  </div>
+
+  <!-- Recent runs -->
+  <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+    <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-slate-900">Recent runs</h2>
+      <a href="/results" class="text-xs text-indigo-600 hover:underline">View all →</a>
+    </div>
+    <div id="recent-runs-list"
+         class="divide-y divide-slate-100"
+         hx-get="/dashboard/recent-runs"
+         hx-trigger="dashboardRefresh from:body"
+         hx-swap="innerHTML">
+      {% include 'partials/dashboard_recent_runs.html' %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

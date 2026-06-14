@@ -8,7 +8,7 @@ an experiment.
 import csv
 import os
 from typing import Union
-from adgtk.tracking.structure import EXP_RESULTS_FOLDER
+from adgtk.utils.defaults import EXP_RESULTS_FOLDER
 
 
 def get_single_run_metric_data(

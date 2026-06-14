@@ -6,8 +6,13 @@ pandas
 regex
 requests
 anytree
+markdown
 matplotlib
 numpy
 prompt-toolkit
 pydantic
 docstring-parser
+mcp[cli]
+fastapi
+uvicorn[standard]
+python-multipart

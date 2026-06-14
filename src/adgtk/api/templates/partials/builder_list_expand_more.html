@@ -1,0 +1,55 @@
+<div class="flex flex-col h-full">
+
+  <div class="px-6 py-4 border-b border-slate-200">
+    <h3 class="text-sm font-semibold text-slate-900">{{ ctx.question_text }}</h3>
+    <p class="text-xs text-slate-400 mt-1">
+      {{ ctx.accumulated | length }} item{{ "s" if ctx.accumulated | length != 1 else "" }} added
+    </p>
+  </div>
+
+  <!-- Accumulated items summary -->
+  {% if ctx.accumulated %}
+  <div class="px-6 py-4 border-b border-slate-100 space-y-1">
+    {% for item in ctx.accumulated %}
+    <div class="flex items-center gap-2 text-sm">
+      <span class="w-5 h-5 rounded-full bg-green-100 text-green-700 flex items-center
+                   justify-center text-xs font-medium flex-shrink-0">
+        {{ loop.index }}
+      </span>
+      <span class="font-mono text-slate-700">{{ item.factory_id }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="flex-1 flex items-center justify-center px-6 py-8">
+    <p class="text-sm text-slate-600 text-center">Add another item?</p>
+  </div>
+
+  <!-- Yes / No buttons -->
+  <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+    <form hx-post="/experiments/builder/list-expand-more"
+          hx-target="#builder-content"
+          hx-swap="innerHTML">
+      <input type="hidden" name="state_json" value="{{ state_json }}">
+      <input type="hidden" name="add_more" value="no">
+      <button type="submit"
+              class="px-4 py-2 rounded-md border border-slate-300 text-sm text-slate-600
+                     hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400">
+        Done
+      </button>
+    </form>
+    <form hx-post="/experiments/builder/list-expand-more"
+          hx-target="#builder-content"
+          hx-swap="innerHTML">
+      <input type="hidden" name="state_json" value="{{ state_json }}">
+      <input type="hidden" name="add_more" value="yes">
+      <button type="submit"
+              class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium
+                     hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        + Add another
+      </button>
+    </form>
+  </div>
+
+</div>

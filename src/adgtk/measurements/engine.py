@@ -23,8 +23,8 @@ from typing import (
 )
 import uuid
 import numpy as np
-from adgtk.common.defaults import SCENARIO_LOGGER_NAME
-from adgtk.common import UnableToMeasureException
+from adgtk.utils.defaults import SCENARIO_LOGGER_NAME
+from adgtk.utils import UnableToMeasureException
 from adgtk.tracking import ExperimentRunFolders, MetricTracker
 from .factory import create_measurement
 from .factory import (

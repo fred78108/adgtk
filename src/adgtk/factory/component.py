@@ -35,21 +35,6 @@ Defects
 =======
 1.
 """
-import os
-import sys
-# before importing others
-# ----------------------------------------------------------------------
-# Start of path verification
-# ----------------------------------------------------------------------
-path = os.getcwd()
-bootstrap_file = os.path.join(path, "bootstrap.py")
-if not os.path.exists(bootstrap_file):
-    print("ERROR: Unable to locate the bootstrap.py. Please check your path.")
-    sys.exit(1)
-# ----------------------------------------------------------------------
-# End of path verification
-# ----------------------------------------------------------------------
-
 from adgtk.factory.structure import (
     BlueprintQuestion,
     SupportsFactory,
@@ -65,15 +50,9 @@ import secrets
 import inspect
 import copy
 
-# setup logfile for this and sub-modules
-from adgtk.utils import create_logger
+import logging
 
-# Set up module-specific logger
-_logger = create_logger(
-    "adgtk.factory.log",
-    logger_name=__name__,
-    subdir="framework"
-)
+_logger = logging.getLogger(__name__)
 
 
 # ----------------------------------------------------------------------

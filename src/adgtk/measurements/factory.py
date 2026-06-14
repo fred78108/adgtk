@@ -17,19 +17,6 @@ Key behaviors:
 4. Centralizes built-in and user-defined measurements in one inventory.
 """
 
-import os
-import sys
-# ----------------------------------------------------------------------
-# Start of path verification
-# ----------------------------------------------------------------------
-path = os.getcwd()
-bootstrap_file = os.path.join(path, "bootstrap.py")
-if not os.path.exists(bootstrap_file):
-    print("ERROR: Unable to locate the bootstrap.py. Please check your path.")
-    sys.exit(1)
-# ----------------------------------------------------------------------
-# End of path verification
-# ----------------------------------------------------------------------
 import inspect
 from typing import (
     Any,
@@ -46,7 +33,7 @@ from typing import (
 )
 import uuid
 import numpy as np
-from adgtk.utils import create_logger
+import logging
 # ----------------------------------------------------------------------
 # Protocols, Interfaces, & Structures
 # ----------------------------------------------------------------------
@@ -115,12 +102,7 @@ class MeasFactoryEntry(TypedDict):
 _inventory: dict[str, MeasFactoryEntry] = {}
 
 
-# Set up module-specific logger
-_logger = create_logger(
-    "adgtk.measurement.factory.log",
-    logger_name=__name__,
-    subdir="framework"
-)
+_logger = logging.getLogger(__name__)
 
 
 # ----------------------------------------------------------------------

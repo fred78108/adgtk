@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}— Task {{ record.task_id }}{% endblock %}
+{% block content %}
+
+{% set status_colors = {
+  'running':  'bg-amber-100 text-amber-800',
+  'complete': 'bg-green-100 text-green-800',
+  'error':    'bg-red-100   text-red-800',
+  'stopped':  'bg-slate-100 text-slate-600',
+} %}
+
+<!-- Page header -->
+<div class="mb-6 flex items-start justify-between gap-4">
+  <div>
+    <div class="mb-1">
+      <a href="/experiments"
+         class="text-sm text-slate-500 hover:text-slate-700">← Experiments</a>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-900">
+      {{ record.experiment_name }}
+    </h1>
+    <p class="text-xs text-slate-400 font-mono mt-0.5">
+      task {{ record.task_id }}
+      · {{ record.started_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+    </p>
+  </div>
+  <span id="status-badge"
+        class="mt-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+               text-sm font-medium flex-shrink-0
+               {{ status_colors.get(record.status, 'bg-slate-100 text-slate-600') }}">
+    {% if record.status == 'running' %}
+    <span class="animate-pulse h-2 w-2 rounded-full bg-amber-400
+                 inline-block flex-shrink-0"></span>
+    {% endif %}
+    {{ record.status }}
+  </span>
+</div>
+
+<!-- Output card -->
+<div class="bg-white rounded-lg border border-slate-200 shadow-sm mb-4">
+  <div class="px-6 py-3 border-b border-slate-200
+              flex items-center justify-between">
+    <h2 class="text-sm font-semibold text-slate-900">Output</h2>
+    {% if is_live %}
+    <button hx-post="/tasks/{{ record.task_id }}/stop"
+            hx-confirm="Stop this experiment?"
+            hx-on::after-request="window.location.reload()"
+            class="text-xs font-medium text-red-600 hover:text-red-800
+                   border border-red-300 hover:border-red-500 rounded
+                   px-3 py-1 transition-colors cursor-pointer">
+      Stop
+    </button>
+    {% endif %}
+  </div>
+  <div class="p-4">
+    {% if is_live %}
+    <!-- Live SSE stream -->
+    <div id="sse-out"
+         class="bg-slate-900 rounded-md p-4 overflow-auto
+                max-h-[60vh] text-slate-100"
+         hx-ext="sse"
+         sse-connect="/tasks/{{ record.task_id }}/stream"
+         sse-swap="message"
+         sse-close="done"
+         hx-swap="beforeend scroll:bottom">
+      <div id="sse-done-{{ record.task_id }}"
+           sse-swap="done"
+           hx-swap="beforeend"></div>
+    </div>
+    <script>
+      document.getElementById('sse-out').addEventListener(
+        'htmx:sseMessage',
+        function (e) {
+          if (e.detail.type === 'navigate') {
+            var url = e.detail.data.trim();
+            if (url) window.location.href = url;
+          } else if (e.detail.type === 'done') {
+            var badge = document.getElementById('status-badge');
+            if (badge) {
+              var isError = e.detail.data.indexOf('text-red') !== -1;
+              var status = isError ? 'error' : 'complete';
+              var oldColors = isError
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-amber-100 text-amber-800';
+              var newColors = isError
+                ? 'bg-red-100 text-red-800'
+                : 'bg-green-100 text-green-800';
+              badge.className = badge.className.replace(oldColors, newColors);
+              badge.innerHTML = status;
+            }
+          }
+        }
+      );
+    </script>
+    {% else %}
+    <!-- Static output for completed / historical tasks -->
+    <div class="bg-slate-900 rounded-md p-4 overflow-auto
+                max-h-[60vh] text-slate-100 font-mono text-xs leading-5">
+      {% for line in output_lines %}
+      <div>{{ line | e }}</div>
+      {% else %}
+      <div class="text-slate-500 italic">No output captured.</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Completion / status panel -->
+{% if record.status == 'complete' and run_id %}
+<div class="bg-green-50 border border-green-200 rounded-lg
+            px-6 py-4 flex items-center justify-between gap-4">
+  <div>
+    <p class="text-sm font-semibold text-green-800">Run complete</p>
+    <p class="text-xs text-green-600 font-mono mt-0.5">{{ run_id }}</p>
+  </div>
+  <a href="/results/{{ record.experiment_name }}/{{ run_id }}"
+     class="px-4 py-2 rounded-md bg-green-700 text-white text-sm
+            font-medium hover:bg-green-800 transition-colors
+            whitespace-nowrap">
+    View Report →
+  </a>
+</div>
+{% if not is_live %}
+<script>
+  setTimeout(function () {
+    window.location.href =
+      '/results/{{ record.experiment_name }}/{{ run_id }}';
+  }, 1500);
+</script>
+{% endif %}
+{% elif record.status == 'error' %}
+<div class="bg-red-50 border border-red-200 rounded-lg px-6 py-4">
+  <p class="text-sm font-semibold text-red-800">Run failed</p>
+  <p class="text-xs text-red-600 mt-0.5">
+    Check the output log above for details.
+  </p>
+</div>
+{% elif record.status == 'stopped' %}
+<div class="bg-slate-100 border border-slate-300 rounded-lg px-6 py-4">
+  <p class="text-sm font-semibold text-slate-700">Run stopped by user</p>
+</div>
+{% endif %}
+
+{% endblock %}

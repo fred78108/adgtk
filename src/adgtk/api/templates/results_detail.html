@@ -1,0 +1,808 @@
+{% extends "base.html" %}
+{% block title %}— {{ run_id }}{% endblock %}
+{% block content %}
+
+{# ── helpers ── #}
+{% set r = results or {} %}
+{% set m = manifest or {} %}
+{% set verdict      = r.get('verdict') or m.get('verdict') or 'unknown' %}
+{% set verdict_note = r.get('verdict_note') or m.get('verdict_note') or '' %}
+{% set summary      = r.get('summary') or m.get('summary') or '' %}
+{% set tags         = r.get('tags') or {} %}
+{% set metrics      = r.get('metrics') or {} %}
+{% set metric_sums  = m.get('metric_summaries') or {} %}
+{% set artifacts    = m.get('artifacts') or [] %}
+{% set duration     = m.get('duration_seconds') %}
+{% set ts_start     = m.get('timestamp_start') %}
+
+{% set vc = {
+  'pass':        'bg-green-100 text-green-800 border-green-200',
+  'fail':        'bg-red-100 text-red-800 border-red-200',
+  'inconclusive':'bg-amber-100 text-amber-800 border-amber-200',
+}.get(verdict, 'bg-slate-100 text-slate-600 border-slate-200') %}
+
+{# decide which tabs are present #}
+{% set has_metrics  = metrics or metric_sums %}
+{% set has_plots    = image_files %}
+{% set has_config   = config %}
+{% set has_report   = report_md %}
+{% set has_logs     = llm_logs or scenario_log %}
+
+{# ── page header ── #}
+<div class="mb-6">
+  <div class="flex items-center gap-2 text-sm text-slate-500 mb-2">
+    <a href="/results" class="hover:underline">Results</a>
+    <span>›</span>
+    <a href="/results/{{ experiment }}" class="font-mono hover:underline">{{ experiment }}</a>
+    <span>›</span>
+    <span class="font-mono text-slate-700">{{ run_id }}</span>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold text-slate-900 font-mono">{{ run_id }}</h1>
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded border text-sm font-semibold {{ vc }}">
+      {{ verdict | upper }}
+    </span>
+    {% if m.get('status') %}
+    {% set sc = {'complete': 'bg-green-100 text-green-700', 'incomplete': 'bg-amber-100 text-amber-700'}.get(m.status, 'bg-slate-100 text-slate-600') %}
+    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ sc }}">
+      {{ m.status }}
+    </span>
+    {% endif %}
+    <span class="text-sm text-slate-400 ml-auto">
+      {% if duration is not none %}{{ "%.2f" | format(duration) }}s{% endif %}
+      {% if ts_start %} · {{ ts_start }}{% endif %}
+    </span>
+  </div>
+
+  {% if summary %}
+  <p class="mt-3 text-sm text-slate-600 max-w-2xl">{{ summary }}</p>
+  {% endif %}
+  {% if verdict_note %}
+  <p class="mt-1 text-sm text-slate-500 italic">{{ verdict_note }}</p>
+  {% endif %}
+</div>
+
+{# ── tabs ── #}
+<div x-data="{ tab: 'overview' }">
+
+  {# tab nav #}
+  <div class="flex gap-1 border-b border-slate-200 mb-6">
+    {% macro tab_btn(id, label) %}
+    <button
+      @click="tab = '{{ id }}'"
+      :class="tab === '{{ id }}'
+        ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold'
+        : 'text-slate-500 hover:text-slate-700'"
+      class="px-4 py-2 text-sm -mb-px transition-colors">
+      {{ label }}
+    </button>
+    {% endmacro %}
+
+    {{ tab_btn('overview', 'Overview') }}
+    {% if has_metrics %}{{ tab_btn('metrics', 'Metrics') }}{% endif %}
+    {% if has_plots %}{{ tab_btn('plots', 'Plots (' ~ image_files | length ~ ')') }}{% endif %}
+    {% if has_config %}{{ tab_btn('config', 'Config') }}{% endif %}
+    {% if has_report %}{{ tab_btn('report', 'Report') }}{% endif %}
+    {% if has_logs %}{{ tab_btn('logs', 'Logs') }}{% endif %}
+    {{ tab_btn('notes', 'Notes' ~ (' (' ~ researcher_notes | length ~ ')' if researcher_notes else '')) }}
+  </div>
+
+  {# ── OVERVIEW tab ── #}
+  <div x-show="tab === 'overview'" x-cloak>
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+      {# run metadata card #}
+      <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-200">
+          <h2 class="text-sm font-semibold text-slate-900">Run info</h2>
+        </div>
+        <dl class="px-6 py-4 space-y-2 text-sm">
+          {% macro kv(label, val) %}
+          <div class="flex justify-between">
+            <dt class="text-slate-500">{{ label }}</dt>
+            <dd class="font-mono text-slate-900 text-right">{{ val }}</dd>
+          </div>
+          {% endmacro %}
+          {{ kv('Experiment', experiment) }}
+          {{ kv('Run ID', run_id) }}
+          {{ kv('Verdict', verdict) }}
+          {% if verdict_note %}{{ kv('Note', verdict_note) }}{% endif %}
+          {% if m.get('status') %}{{ kv('Status', m.status) }}{% endif %}
+          {% if ts_start %}{{ kv('Started', ts_start) }}{% endif %}
+          {% if m.get('timestamp_end') %}{{ kv('Ended', m.timestamp_end) }}{% endif %}
+          {% if duration is not none %}{{ kv('Duration', "%.3f" | format(duration) ~ 's') }}{% endif %}
+        </dl>
+      </div>
+
+      {# tags card — always show (empty state if no tags) #}
+      <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-200">
+          <h2 class="text-sm font-semibold text-slate-900">Tags</h2>
+        </div>
+        <div class="px-6 py-4">
+          {% if tags %}
+          <div class="flex flex-wrap gap-2">
+            {% for k, v in tags.items() %}
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-50 border border-indigo-100 text-xs font-mono">
+              <span class="text-indigo-500">{{ k }}</span>
+              <span class="text-slate-400">=</span>
+              <span class="text-slate-900">{{ v }}</span>
+            </span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-sm text-slate-400">No tags recorded for this run.</p>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    {# artifacts #}
+    {% if artifacts %}
+    <div class="mt-6 bg-white rounded-lg border border-slate-200 shadow-sm">
+      <div class="px-6 py-4 border-b border-slate-200">
+        <h2 class="text-sm font-semibold text-slate-900">Artifacts</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100 text-sm">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Path</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Purpose</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Size</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for a in artifacts %}
+            <tr class="hover:bg-slate-50 cursor-pointer" onclick="window.location='{{ a.view_url }}'">
+              <td class="px-6 py-2 font-mono text-xs text-indigo-600 hover:underline">
+                <a href="{{ a.view_url }}">{{ a.path }}</a>
+              </td>
+              <td class="px-6 py-2 text-xs text-slate-500">{{ a.purpose }}</td>
+              <td class="px-6 py-2 text-xs text-slate-400 text-right">
+                {% if a.size_bytes %}{{ (a.size_bytes / 1024) | round(1) }} KB{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>{# /overview #}
+
+  {# ── METRICS tab ── #}
+  {% if has_metrics %}
+
+  {# ── precompute agent metric groups ── #}
+  {% set agent_kpi_keys = ['agent.success','agent.goal_completion','agent.path_efficiency','agent.first_attempt_success'] %}
+  {% set agent_kpi_labels = {
+    'agent.success': 'Success Rate',
+    'agent.goal_completion': 'Goal Completion',
+    'agent.path_efficiency': 'Path Efficiency',
+    'agent.first_attempt_success': '1st-Attempt'
+  } %}
+  {% set agent_exec_keys = ['agent.latency','agent.retry_count','agent.error','agent.tool_call_count'] %}
+  {% set agent_exec_labels = {
+    'agent.latency': 'Latency (s)',
+    'agent.retry_count': 'Retries',
+    'agent.error': 'Error Rate',
+    'agent.tool_call_count': 'Tool Calls/Step'
+  } %}
+  {% set agent_token_keys = ['agent.tokens_in','agent.tokens_out'] %}
+  {% set agent_token_labels = {
+    'agent.tokens_in': 'Input Tokens',
+    'agent.tokens_out': 'Output Tokens'
+  } %}
+  {% set has_agent_metrics = metric_sums and (
+    metric_sums.keys() | list | select('match','^agent\\.') | list | length > 0
+  ) %}
+
+  <div x-show="tab === 'metrics'" x-cloak>
+
+    {# ══════════════════════════════════════════════════════
+       AGENT PERFORMANCE SECTION
+       ══════════════════════════════════════════════════════ #}
+    {% if has_agent_metrics %}
+    <div class="mb-8">
+      <h2 class="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <span class="inline-block w-1 h-5 bg-indigo-500 rounded"></span>
+        Agent Performance
+      </h2>
+
+      {# ── KPI stat cards ── #}
+      {% set kpi_present = [] %}
+      {% for k in agent_kpi_keys %}{% if metric_sums.get(k) %}{% set _ = kpi_present.append(k) %}{% endif %}{% endfor %}
+      {% if kpi_present %}
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-6">
+        {% for k in kpi_present %}
+        {% set s = metric_sums[k] %}
+        {% set mn = s.get('mean', 0) %}
+        {% set pct = (mn * 100) | round(1) %}
+        {% set color = 'indigo' if mn >= 0.8 else ('amber' if mn >= 0.5 else 'red') %}
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col gap-2">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">
+            {{ agent_kpi_labels.get(k, k) }}
+          </p>
+          <p class="text-3xl font-bold font-mono
+            {% if color == 'indigo' %}text-indigo-600
+            {% elif color == 'amber' %}text-amber-600
+            {% else %}text-red-600{% endif %}">
+            {{ pct }}%
+          </p>
+          <div class="w-full bg-slate-100 rounded-full h-2">
+            <div class="h-2 rounded-full
+              {% if color == 'indigo' %}bg-indigo-500
+              {% elif color == 'amber' %}bg-amber-400
+              {% else %}bg-red-400{% endif %}"
+              style="width: {{ [pct, 100] | min }}%"></div>
+          </div>
+          <p class="text-xs text-slate-400">
+            n={{ s.get('n',0) }} &nbsp;·&nbsp; ±{{ "%.3f" | format(s.get('std',0)) }}
+          </p>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {# ── Charts row: KPI radar + token bar (Chart.js) ── #}
+      {% if kpi_present or metric_sums.get('agent.tokens_in') or metric_sums.get('agent.tokens_out') %}
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+
+        {# KPI radar chart #}
+        {% if kpi_present %}
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">KPI Overview</p>
+          <div class="relative" style="height:220px">
+            <canvas id="kpiRadarChart"></canvas>
+          </div>
+          <script>
+          (function(){
+            const labels = {{ kpi_present | map('extract', agent_kpi_labels) | list | tojson }};
+            const data   = [{% for k in kpi_present %}{{ metric_sums[k].get('mean',0) | round(4) }}{% if not loop.last %},{% endif %}{% endfor %}];
+            new Chart(document.getElementById('kpiRadarChart'), {
+              type: 'radar',
+              data: {
+                labels,
+                datasets: [{
+                  label: 'Score',
+                  data,
+                  backgroundColor: 'rgba(99,102,241,0.15)',
+                  borderColor:     'rgba(99,102,241,0.8)',
+                  pointBackgroundColor: 'rgba(99,102,241,1)',
+                  pointRadius: 4,
+                  borderWidth: 2,
+                }]
+              },
+              options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { r: { min:0, max:1, ticks: { stepSize:0.25, font:{size:9} },
+                               pointLabels: { font:{size:10} } } },
+                plugins: { legend: { display: false } }
+              }
+            });
+          })();
+          </script>
+        </div>
+        {% endif %}
+
+        {# Token usage bar chart #}
+        {% if metric_sums.get('agent.tokens_in') or metric_sums.get('agent.tokens_out') %}
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">Token Usage per Step</p>
+          <div class="relative" style="height:220px">
+            <canvas id="tokenBarChart"></canvas>
+          </div>
+          <script>
+          (function(){
+            const tin  = {{ metric_sums.get('agent.tokens_in',  {}).get('mean', 0) | round(1) }};
+            const tout = {{ metric_sums.get('agent.tokens_out', {}).get('mean', 0) | round(1) }};
+            const tins  = {{ metric_sums.get('agent.tokens_in',  {}).get('std', 0) | round(1) }};
+            const touts = {{ metric_sums.get('agent.tokens_out', {}).get('std', 0) | round(1) }};
+            new Chart(document.getElementById('tokenBarChart'), {
+              type: 'bar',
+              data: {
+                labels: ['Input Tokens', 'Output Tokens'],
+                datasets: [
+                  { label: 'Mean/Step', data: [tin, tout],
+                    backgroundColor: ['rgba(99,102,241,0.7)','rgba(16,185,129,0.7)'],
+                    borderColor:     ['rgba(99,102,241,1)',  'rgba(16,185,129,1)'],
+                    borderWidth: 1 },
+                  { label: '±Std',     data: [tins, touts],
+                    backgroundColor: ['rgba(99,102,241,0.2)','rgba(16,185,129,0.2)'],
+                    borderColor:     ['rgba(99,102,241,0.5)','rgba(16,185,129,0.5)'],
+                    borderWidth: 1 }
+                ]
+              },
+              options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position:'top', labels:{font:{size:10}} } },
+                scales: { y: { beginAtZero:true, ticks:{font:{size:10}} },
+                          x: { ticks:{font:{size:10}} } }
+              }
+            });
+          })();
+          </script>
+        </div>
+        {% endif %}
+
+      </div>
+      {% endif %}
+
+      {# ── Step-by-step latency chart (raw series) ── #}
+      {% if agent_series and agent_series.get('agent.latency') %}
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
+        <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">
+          Step Latency Timeline
+        </p>
+        <div class="relative" style="height:160px">
+          <canvas id="latencyLineChart"></canvas>
+        </div>
+        <script>
+        (function(){
+          const vals = {{ agent_series['agent.latency'] | tojson }};
+          const labels = vals.map((_,i) => 'Step '+(i+1));
+          new Chart(document.getElementById('latencyLineChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: 'Latency (s)',
+                data: vals,
+                borderColor: 'rgba(99,102,241,0.9)',
+                backgroundColor: 'rgba(99,102,241,0.07)',
+                fill: true,
+                tension: 0.35,
+                pointRadius: vals.length > 30 ? 0 : 3,
+                borderWidth: 2,
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend:{display:false} },
+              scales: {
+                y: { beginAtZero:true, ticks:{font:{size:9}} },
+                x: { ticks:{font:{size:9}, maxTicksLimit:12} }
+              }
+            }
+          });
+        })();
+        </script>
+      </div>
+      {% endif %}
+
+      {# ── Step execution stats table ── #}
+      {% set exec_present = [] %}
+      {% for k in agent_exec_keys %}{% if metric_sums.get(k) %}{% set _ = exec_present.append(k) %}{% endif %}{% endfor %}
+      {% if exec_present %}
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+        <div class="px-6 py-3 border-b border-slate-100">
+          <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide">Step Execution Stats</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50">
+              <tr>
+                {% for col in ['Metric','Mean','Std','Min','Max','n'] %}
+                <th class="px-5 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for k in exec_present %}
+              {% set s = metric_sums[k] %}
+              <tr class="hover:bg-slate-50">
+                <td class="px-5 py-2 font-medium text-slate-700">{{ agent_exec_labels.get(k, k) }}</td>
+                <td class="px-5 py-2 font-mono text-slate-900">{{ "%.4f" | format(s.get('mean',0)) }}</td>
+                <td class="px-5 py-2 font-mono text-slate-500">{{ "%.4f" | format(s.get('std',0)) }}</td>
+                <td class="px-5 py-2 font-mono text-slate-500">{{ "%.4f" | format(s.get('min',0)) }}</td>
+                <td class="px-5 py-2 font-mono text-slate-500">{{ "%.4f" | format(s.get('max',0)) }}</td>
+                <td class="px-5 py-2 font-mono text-slate-400">{{ s.get('n',0) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Token stats table ── #}
+      {% set token_present = [] %}
+      {% for k in agent_token_keys %}{% if metric_sums.get(k) %}{% set _ = token_present.append(k) %}{% endif %}{% endfor %}
+      {% if token_present %}
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+        <div class="px-6 py-3 border-b border-slate-100">
+          <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide">Token Budget</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50">
+              <tr>
+                {% for col in ['Metric','Total','Avg/Step','Std','Min','Max'] %}
+                <th class="px-5 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for k in token_present %}
+              {% set s = metric_sums[k] %}
+              {% set total = (s.get('mean',0) * s.get('n',1)) | round | int %}
+              <tr class="hover:bg-slate-50">
+                <td class="px-5 py-2 font-medium text-slate-700">{{ agent_token_labels.get(k, k) }}</td>
+                <td class="px-5 py-2 font-mono font-semibold text-slate-900">{{ "{:,}".format(total) }}</td>
+                <td class="px-5 py-2 font-mono text-slate-900">{{ "%.1f" | format(s.get('mean',0)) }}</td>
+                <td class="px-5 py-2 font-mono text-slate-500">{{ "%.1f" | format(s.get('std',0)) }}</td>
+                <td class="px-5 py-2 font-mono text-slate-500">{{ s.get('min',0) | int }}</td>
+                <td class="px-5 py-2 font-mono text-slate-500">{{ s.get('max',0) | int }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Tool distribution ── #}
+      {% set tool_items = [] %}
+      {% for k, s in metric_sums.items() %}
+        {% if k.startswith('agent.tool.') %}
+          {% set _ = tool_items.append((k[11:], s)) %}
+        {% endif %}
+      {% endfor %}
+      {% if tool_items %}
+      {% set tool_total = tool_items | map(attribute='1') | map(attribute='n') | sum %}
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+        <div class="px-6 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide">Tool Distribution</h3>
+          <span class="text-xs text-slate-400">{{ tool_total }} total calls</span>
+        </div>
+
+        {# Tool bar chart #}
+        <div class="px-6 pt-4 pb-2">
+          <div class="relative" style="height:{{ [tool_items|length * 32 + 40, 200] | max }}px; max-height:320px">
+            <canvas id="toolBarChart"></canvas>
+          </div>
+          <script>
+          (function(){
+            const labels = {{ tool_items | map(attribute=0) | list | tojson }};
+            const calls  = {{ tool_items | map(attribute=1) | map(attribute='n') | list | tojson }};
+            const rates  = {{ tool_items | map(attribute=1) | map(attribute='mean') | list | map('round', 3) | list | tojson }};
+            new Chart(document.getElementById('toolBarChart'), {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [
+                  { label:'Calls', data: calls,
+                    backgroundColor:'rgba(99,102,241,0.7)', borderColor:'rgba(99,102,241,1)',
+                    borderWidth:1, yAxisID:'y' },
+                  { label:'Success Rate', data: rates,
+                    backgroundColor:'rgba(16,185,129,0.5)', borderColor:'rgba(16,185,129,1)',
+                    borderWidth:1, type:'line', yAxisID:'y1', tension:0, pointRadius:4 }
+                ]
+              },
+              options: {
+                indexAxis: 'y',
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend:{position:'top', labels:{font:{size:10}}} },
+                scales: {
+                  y:  { ticks:{font:{size:10}} },
+                  y1: { display:false },
+                  x:  { beginAtZero:true, ticks:{font:{size:10}},
+                        title:{display:true, text:'Calls', font:{size:9}} }
+                }
+              }
+            });
+          })();
+          </script>
+        </div>
+
+        {# Tool table #}
+        <div class="overflow-x-auto border-t border-slate-100">
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-5 py-2 text-left text-xs font-medium text-slate-500 uppercase">Tool</th>
+                <th class="px-5 py-2 text-right text-xs font-medium text-slate-500 uppercase">Calls</th>
+                <th class="px-5 py-2 text-right text-xs font-medium text-slate-500 uppercase">Share</th>
+                <th class="px-5 py-2 text-left text-xs font-medium text-slate-500 uppercase">Success Rate</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for tool_name, s in tool_items | sort(attribute='1.n', reverse=true) %}
+              {% set share = (s.get('n', 0) / tool_total * 100) if tool_total else 0 %}
+              {% set sr    = s.get('mean', 0) * 100 %}
+              <tr class="hover:bg-slate-50">
+                <td class="px-5 py-2 font-mono text-xs text-indigo-700 font-medium">{{ tool_name }}</td>
+                <td class="px-5 py-2 font-mono text-xs text-slate-900 text-right">{{ s.get('n',0) }}</td>
+                <td class="px-5 py-2 text-xs text-slate-500 text-right">{{ "%.1f" | format(share) }}%</td>
+                <td class="px-5 py-2">
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1 bg-slate-100 rounded-full h-2 max-w-[120px]">
+                      <div class="h-2 rounded-full {% if sr >= 80 %}bg-green-500{% elif sr >= 50 %}bg-amber-400{% else %}bg-red-400{% endif %}"
+                           style="width: {{ [sr, 100] | min }}%"></div>
+                    </div>
+                    <span class="text-xs font-mono text-slate-700">{{ "%.0f" | format(sr) }}%</span>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endif %}{# /has_agent_metrics #}
+
+    {# ══════════════════════════════════════════════════════
+       RESULT METRICS (from results.yaml)
+       ══════════════════════════════════════════════════════ #}
+    {% if metrics %}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-2">
+        <span class="inline-block w-1 h-4 bg-slate-400 rounded"></span>
+        <h2 class="text-sm font-semibold text-slate-900">Result Metrics</h2>
+      </div>
+      <div class="px-6 py-5 space-y-3">
+        {% if numeric_metrics %}
+        <div class="space-y-2 mb-4">
+          {% for key, val in numeric_metrics.items() %}
+          {% set abs_val = val if val >= 0 else -val %}
+          {% set bar_w = [(abs_val / max_metric_val * 100), 100] | min | round(1) %}
+          <div class="flex items-center gap-3">
+            <span class="w-40 text-right text-xs font-mono text-slate-500 truncate shrink-0" title="{{ key }}">{{ key }}</span>
+            <div class="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
+              <div class="h-4 rounded-full transition-all {% if val < 0 %}bg-red-400{% else %}bg-indigo-400{% endif %}"
+                   style="width: {{ bar_w }}%"></div>
+            </div>
+            <span class="w-28 text-xs font-mono text-slate-900 text-right shrink-0">{{ val }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <hr class="border-slate-100">
+        {% endif %}
+        <dl class="space-y-1">
+          {% for key, val in metrics.items() %}
+          <div class="flex justify-between text-sm py-1">
+            <dt class="font-mono text-slate-500 text-xs">{{ key }}</dt>
+            <dd class="text-slate-900 font-medium text-right text-xs max-w-xs">
+              {% if val is sameas true %}<span class="text-green-600 font-semibold">true</span>
+              {% elif val is sameas false %}<span class="text-red-500 font-semibold">false</span>
+              {% else %}{{ val }}{% endif %}
+            </dd>
+          </div>
+          {% endfor %}
+        </dl>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ══════════════════════════════════════════════════════
+       OTHER METRIC SUMMARIES (non-agent tracked metrics)
+       ══════════════════════════════════════════════════════ #}
+    {% set other_sums = [] %}
+    {% for k, s in metric_sums.items() %}
+      {% if not k.startswith('agent.') %}{% set _ = other_sums.append((k, s)) %}{% endif %}
+    {% endfor %}
+    {% if other_sums %}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-2">
+        <span class="inline-block w-1 h-4 bg-slate-400 rounded"></span>
+        <h2 class="text-sm font-semibold text-slate-900">Tracked Metric Summaries</h2>
+        <p class="text-xs text-slate-400 ml-1">Descriptive statistics across all observations in this run.</p>
+      </div>
+      <div class="px-6 py-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {% for key, s in other_sums %}
+        {% set label = s.get('label') or key %}
+        {% set mn    = s.get('mean', 0) %}
+        {% set sd    = s.get('std', 0) %}
+        {% set lo    = s.get('min', 0) %}
+        {% set hi    = s.get('max', 1) %}
+        {% set n     = s.get('n', 0) %}
+        {% set rng   = hi - lo %}
+        {% set mean_pct = (((mn - lo) / rng * 100) if rng else 50) | round(1) %}
+        <div class="border border-slate-200 rounded-lg p-4">
+          <p class="text-xs font-mono text-slate-500 truncate mb-1" title="{{ label }}">{{ label }}</p>
+          <p class="text-2xl font-bold text-slate-900 font-mono">{{ "%.4g" | format(mn) }}</p>
+          <p class="text-xs text-slate-400 mb-3">± {{ "%.4g" | format(sd) }} &nbsp;·&nbsp; n={{ n }}</p>
+          <div class="relative w-full h-2 bg-slate-100 rounded-full">
+            <div class="absolute h-2 bg-indigo-200 rounded-full" style="left:0; width:{{ mean_pct }}%"></div>
+            <div class="absolute w-2 h-2 bg-indigo-600 rounded-full -translate-x-1/2" style="left:{{ mean_pct }}%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-slate-400 mt-1">
+            <span>{{ "%.4g" | format(lo) }}</span>
+            <span>{{ "%.4g" | format(hi) }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>{# /metrics #}
+  {% endif %}
+
+  {# ── PLOTS tab ── #}
+  {% if has_plots %}
+  <div x-show="tab === 'plots'" x-cloak>
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      {% for fname in image_files %}
+      <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <img
+          src="/results/{{ experiment }}/{{ run_id }}/images/{{ fname }}"
+          alt="{{ fname }}"
+          class="w-full object-contain max-h-80">
+        <div class="px-4 py-2 border-t border-slate-100">
+          <p class="text-xs font-mono text-slate-500 truncate">{{ fname }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── CONFIG tab ── #}
+  {% if has_config %}
+  <div x-show="tab === 'config'" x-cloak>
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+      <div class="px-6 py-4 border-b border-slate-200">
+        <h2 class="text-sm font-semibold text-slate-900">Run Configuration</h2>
+      </div>
+      <div class="px-6 py-4">
+        <pre class="text-xs font-mono text-slate-700 overflow-auto max-h-[60vh] whitespace-pre-wrap">{{ config | tojson(indent=2) }}</pre>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── REPORT tab ── #}
+  {% if has_report %}
+  <div x-show="tab === 'report'" x-cloak>
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+      <div class="px-6 py-4 border-b border-slate-200">
+        <h2 class="text-sm font-semibold text-slate-900">Run Report</h2>
+      </div>
+      <div class="px-6 py-4">
+        <pre class="text-xs font-mono text-slate-700 overflow-auto max-h-[60vh] whitespace-pre-wrap leading-relaxed">{{ report_md }}</pre>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+
+  {# ── LOGS tab ── #}
+  {% if has_logs %}
+  {% set _init_tab = 'scenario' if scenario_log else (llm_logs.keys() | list | first | default('')) %}
+  {% set _init_content = scenario_log if scenario_log else (llm_logs.values() | list | first | default('')) %}
+  <script>
+    const ROLE_CHIPS = {
+      user:      'bg-indigo-100 text-indigo-700',
+      assistant: 'bg-green-100 text-green-700',
+      system:    'bg-purple-100 text-purple-700',
+      tool:      'bg-cyan-100 text-cyan-700',
+      error:     'bg-red-100 text-red-700',
+      default:   'bg-slate-100 text-slate-600',
+    };
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('runLogViewer', () => ({
+        logTab: {{ _init_tab | tojson }},
+        logContent: {{ _init_content | tojson }},
+        paused: false,
+        get isJsonl() { return this.logTab.endsWith('.jsonl'); },
+        get messages() {
+          if (!this.isJsonl) return [];
+          return this.logContent.split('\n')
+            .filter(l => l.trim())
+            .map(l => { try { return JSON.parse(l); } catch { return null; } })
+            .filter(Boolean);
+        },
+        chipClass(role) {
+          return ROLE_CHIPS[role] || ROLE_CHIPS.default;
+        },
+        async fetchLog() {
+          const name = this.logTab === 'scenario'
+            ? 'scenario'
+            : 'llm/' + this.logTab;
+          const url = '/results/{{ experiment }}/{{ run_id }}/lograw?name='
+            + encodeURIComponent(name);
+          const r = await fetch(url);
+          this.logContent = await r.text();
+          this.$nextTick(() => this.scrollBottom());
+        },
+        scrollBottom() {
+          const el = this.$refs.logContainer;
+          if (el) el.scrollTop = el.scrollHeight;
+        },
+        init() {
+          this.$watch('logTab', () => this.fetchLog());
+          this.$nextTick(() => this.scrollBottom());
+          setInterval(() => { if (!this.paused) this.fetchLog(); }, 3000);
+        }
+      }));
+    });
+  </script>
+  <div x-show="tab === 'logs'" x-cloak x-data="runLogViewer">
+
+    {# toolbar: sub-tab buttons + pause #}
+    <div class="flex items-center gap-2 mb-4 flex-wrap">
+      {% if scenario_log %}
+      <button @click="logTab = 'scenario'"
+              :class="logTab === 'scenario'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+              class="px-3 py-1 rounded text-xs font-mono transition-colors">
+        scenario.log
+      </button>
+      {% endif %}
+      {% for name in llm_logs %}
+      <button @click="logTab = {{ name | tojson }}"
+              :class="logTab === {{ name | tojson }}
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+              class="px-3 py-1 rounded text-xs font-mono transition-colors">
+        {{ name }}
+      </button>
+      {% endfor %}
+      <button @click="paused = !paused"
+              :class="paused
+                ? 'bg-amber-100 text-amber-700 border-amber-200'
+                : 'bg-green-100 text-green-700 border-green-200'"
+              class="ml-auto text-xs px-3 py-1 rounded border font-medium transition-colors">
+        <span x-text="paused ? '▶ Resume' : '⏸ Pause'">⏸ Pause</span>
+      </button>
+    </div>
+
+    <div x-ref="logContainer" class="rounded-lg overflow-auto max-h-[65vh]"
+         :class="isJsonl ? 'bg-white border border-slate-200' : 'bg-slate-900'">
+      <template x-if="isJsonl">
+        <div class="p-4 space-y-4">
+          <template x-if="messages.length === 0">
+            <p class="text-xs text-slate-400">(empty)</p>
+          </template>
+          <template x-for="(msg, i) in messages" :key="i">
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold"
+                      :class="chipClass(msg.role)"
+                      x-text="msg.role.toUpperCase()"></span>
+                <span class="text-xs text-slate-400 font-mono" x-text="msg.ts"></span>
+              </div>
+              <pre class="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed pl-2 border-l-2 border-slate-200"
+                   x-text="msg.content"></pre>
+            </div>
+          </template>
+        </div>
+      </template>
+      <template x-if="!isJsonl">
+        <pre class="text-xs font-mono text-slate-100 leading-relaxed p-4 whitespace-pre-wrap"
+             x-text="logContent || '(empty)'">{{ _init_content or '(empty)' }}</pre>
+      </template>
+    </div>
+
+  </div>{# /logs #}
+  {% endif %}
+
+  {# ── NOTES tab ── #}
+  <div x-show="tab === 'notes'" x-cloak id="notes-panel">
+    {% with notes=researcher_notes %}
+    {% include "partials/researcher_notes.html" %}
+    {% endwith %}
+  </div>
+
+</div>{# /x-data tabs #}
+
+{# empty state when there is genuinely nothing #}
+{% if not results and not manifest and not config and not report_md %}
+<div class="bg-white rounded-lg border border-slate-200 shadow-sm px-6 py-12 text-center">
+  <p class="text-sm text-slate-400">No result data found for this run.</p>
+  <p class="text-xs text-slate-300 mt-1 font-mono">{{ 'results/' ~ experiment ~ '/' ~ run_id ~ '/conclusions/' }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

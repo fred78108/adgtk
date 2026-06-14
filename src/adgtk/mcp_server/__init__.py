@@ -1,0 +1,1 @@
+"""ADGTK MCP server package."""

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}— Factory{% endblock %}
+{% block content %}
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-slate-900">Factory</h1>
+  <p class="text-sm text-slate-500 mt-1">Registered components</p>
+</div>
+
+<!-- Filters -->
+<form hx-get="/factory"
+      hx-target="body"
+      hx-push-url="true"
+      class="mb-6 flex gap-3 items-end">
+  <div>
+    <label class="block text-xs font-medium text-slate-700 mb-1">Group</label>
+    <select name="group"
+            class="rounded border border-slate-300 px-3 py-1.5 text-sm
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <option value="">All groups</option>
+      {% for g in groups %}
+      <option value="{{ g }}" {% if active_group == g %}selected{% endif %}>{{ g }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="block text-xs font-medium text-slate-700 mb-1">Tag</label>
+    <input name="tag" value="{{ active_tag }}"
+           class="rounded border border-slate-300 px-3 py-1.5 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500"
+           placeholder="filter by tag">
+  </div>
+  <button type="submit"
+          class="px-4 py-1.5 rounded bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">
+    Filter
+  </button>
+  <a href="/factory"
+     class="px-4 py-1.5 rounded border border-slate-300 text-slate-600 text-sm hover:bg-slate-50">
+    Clear
+  </a>
+</form>
+
+{% if components %}
+<div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+  <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <thead class="bg-slate-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Factory ID</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Group</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Summary</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tags</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for c in components %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-6 py-3 font-mono text-slate-900">{{ c.factory_id | default('—') }}</td>
+        <td class="px-6 py-3 text-slate-500">{{ c.group | default('—') }}</td>
+        <td class="px-6 py-3 text-slate-600 max-w-xs truncate">{{ c.summary | default('—') }}</td>
+        <td class="px-6 py-3">
+          {% for tag in (c.tags or []) %}
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium
+                       bg-slate-100 text-slate-600 mr-1">{{ tag }}</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-white rounded-lg border border-slate-200 shadow-sm px-6 py-12 text-center">
+  <p class="text-sm text-slate-400">No components match the current filter.</p>
+</div>
+{% endif %}
+{% endblock %}

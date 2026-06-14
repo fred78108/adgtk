@@ -1,0 +1,134 @@
+{% set is_list_type = question.entry_type in (
+    "list[str]", "list[int]", "list[float]", "list[bool]"
+) %}
+{% set is_numeric = question.entry_type in ("int", "float", "list[int]", "list[float]") %}
+{% set input_type = "number" if is_numeric else "text" %}
+{% set step_attr = "1" if question.entry_type in ("int", "list[int]") else "any" %}
+
+<div class="flex flex-col h-full">
+
+  <!-- Header: breadcrumb + progress -->
+  <div class="px-6 py-4 border-b border-slate-200">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs font-mono text-slate-400">{{ component_id }}</span>
+      <span class="text-xs text-slate-400">{{ q_num }} / {{ q_total }}</span>
+    </div>
+    <div class="w-full bg-slate-100 rounded-full h-1 mb-3">
+      <div class="bg-indigo-500 h-1 rounded-full transition-all"
+           style="width: {{ ((q_num - 1) / q_total * 100) | int }}%"></div>
+    </div>
+    <h3 class="text-sm font-semibold text-slate-900">{{ question.question }}</h3>
+    {% if question.helper %}
+    <p class="text-xs text-slate-400 mt-1">{{ question.helper }}</p>
+    {% endif %}
+  </div>
+
+  <!-- Question form -->
+  <form hx-post="/experiments/builder/answer"
+        hx-target="#builder-content"
+        hx-swap="innerHTML"
+        class="flex flex-col flex-1">
+    <input type="hidden" name="state_json" value="{{ state_json }}">
+
+    <div class="flex-1 px-6 py-5">
+
+      <!-- bool -->
+      {% if question.entry_type == "bool" %}
+      <select name="answer_{{ question.attribute }}" required
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <option value="true"  {% if prefill == true  %}selected{% endif %}>True</option>
+        <option value="false" {% if prefill == false %}selected{% endif %}>False</option>
+      </select>
+
+      <!-- ml-string -->
+      {% elif question.entry_type == "ml-string" %}
+      <textarea name="answer_{{ question.attribute }}" rows="5" required
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500
+                       font-mono resize-y"
+                >{{ prefill or "" }}</textarea>
+
+      <!-- list types (managed by Alpine) -->
+      {% elif is_list_type %}
+      <div x-data='{ items: {{ (prefill if prefill is iterable and prefill is not string else []) | tojson }} }'>
+        <div class="space-y-2 mb-3" id="list-items-{{ question.attribute }}">
+          <template x-for="(item, idx) in items" :key="idx">
+            <div class="flex gap-2">
+              {% if question.entry_type == "list[bool]" %}
+              <select :name="'answer_{{ question.attribute }}[]'"
+                      class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="true"  :selected="item === true  || item === 'true'">True</option>
+                <option value="false" :selected="item === false || item === 'false'">False</option>
+              </select>
+              {% else %}
+              <input :name="'answer_{{ question.attribute }}[]'"
+                     :value="item"
+                     @input="items[idx] = $event.target.value"
+                     type="{{ input_type }}"
+                     {% if is_numeric %}step="{{ step_attr }}"{% endif %}
+                     {% if question.min_value is not none %}min="{{ question.min_value }}"{% endif %}
+                     {% if question.max_value is not none %}max="{{ question.max_value }}"{% endif %}
+                     class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              {% endif %}
+              <button @click.prevent="items.splice(idx, 1)"
+                      class="px-2 text-slate-300 hover:text-red-500 transition-colors"
+                      title="Remove">&#x2715;</button>
+            </div>
+          </template>
+        </div>
+        <button @click.prevent="items.push('')"
+                class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+          + Add item
+        </button>
+      </div>
+
+      <!-- str with choices -->
+      {% elif question.choices %}
+      <select name="answer_{{ question.attribute }}" required
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        {% for choice in question.choices %}
+        <option value="{{ choice }}"
+                {% if prefill is not none and prefill == choice %}selected{% endif %}>
+          {{ choice }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <!-- str / int / float -->
+      {% else %}
+      <input type="{{ input_type }}"
+             name="answer_{{ question.attribute }}"
+             value="{{ prefill if prefill is not none else '' }}"
+             {% if is_numeric %}step="{{ step_attr }}"{% endif %}
+             {% if question.min_value is not none %}min="{{ question.min_value }}"{% endif %}
+             {% if question.max_value is not none %}max="{{ question.max_value }}"{% endif %}
+             required
+             autofocus
+             class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      {% endif %}
+
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+      <button type="button"
+              hx-get="/experiments/builder"
+              hx-target="#builder-content"
+              hx-swap="innerHTML"
+              class="text-sm text-slate-500 hover:text-slate-700">
+        ← Scenarios
+      </button>
+      <button type="submit"
+              class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium
+                     hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        Next →
+      </button>
+    </div>
+  </form>
+
+</div>

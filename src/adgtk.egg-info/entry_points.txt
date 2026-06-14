@@ -1,3 +1,11 @@
 [console_scripts]
-adgtk-ds = adgtk.manager.ds_cli:main
-adgtk-mgr = adgtk.manager.cli:manager
+adgtk = adgtk.cli.exp_cli:main
+adgtk-batch = adgtk.cli.batch_cli:main
+adgtk-ds = adgtk.cli.ds_cli:main
+adgtk-factory = adgtk.cli.factory_cli:main
+adgtk-mcp = adgtk.mcp_server.server:main
+adgtk-mgr = adgtk.cli.cli:manager
+adgtk-project = adgtk.cli.project_cli:main
+adgtk-results = adgtk.cli.results_cli:main
+adgtk-study = adgtk.cli.study_cli:main
+adgtk-web = adgtk.api.server:main

@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adgtk"
-version = "0.2.0"
-authors = [{ name = "Frederick Diehl", email = "fdiehl@ualr.edu" }]
-description = "A framework for researching automation of synthetic data generation."
+version = "0.3.0b0"
+authors = [{ name = "Fred Diehl", email = "fred@chaosbyderf.com" }]
+description = "A framework for researching agentic systems."
 readme = "README.rst"
 requires-python = ">=3.12"
 classifiers = [
@@ -25,11 +25,16 @@ dependencies = [
   "regex",
   "requests",
   "anytree",
+  "markdown",
   "matplotlib",
   "numpy",
   "prompt-toolkit",
   "pydantic",
   "docstring-parser",
+  "mcp[cli]",
+  "fastapi",
+  "uvicorn[standard]",
+  "python-multipart",
 ]
 
 [tool.setuptools]
@@ -41,7 +46,7 @@ include = ["adgtk*"]
 
 [project.urls]
 Homepage = "https://github.com/fred78108/adgtk"
-Documentation = "https://adgtk.readthedocs.io/en/latest/"
+Documentation = "https://github.com/fred78108/adgtk/wiki"
 Issues = "https://github.com/fred78108/adgtk/issues"
 
 [tool.pytest.ini_options]
@@ -64,7 +69,7 @@ env_list = ["py312", "type", "lint"]
 
 [tool.tox.env_run_base]
 description = "Run tests under {base_python}"
-deps = ["pytest"]
+deps = ["pytest", "httpx2"]
 package = "wheel"
 commands = [["pytest", "{posargs}"]]
 
@@ -86,10 +91,16 @@ deps = ["flake8<7.0.0", "flake8-pyproject"]
 commands = [["flake8", "src"]]
 
 [project.scripts]
-adgtk-mgr = "adgtk.manager.cli:manager"
-adgtk-ds = "adgtk.manager.ds_cli:main"
-# adgtk = "adgtk.management.cli:manager"
-# adgtk-plugin-wizard = "adgtk.management.cli:plugin_creator"
+adgtk = "adgtk.cli.exp_cli:main"
+adgtk-project = "adgtk.cli.project_cli:main"
+adgtk-batch = "adgtk.cli.batch_cli:main"
+adgtk-factory = "adgtk.cli.factory_cli:main"
+adgtk-mgr = "adgtk.cli.cli:manager"
+adgtk-ds = "adgtk.cli.ds_cli:main"
+adgtk-results = "adgtk.cli.results_cli:main"
+adgtk-study = "adgtk.cli.study_cli:main"
+adgtk-mcp = "adgtk.mcp_server.server:main"
+adgtk-web = "adgtk.api.server:main"
 
 
 [tool.flake8]
@@ -98,13 +109,20 @@ per-file-ignores = [
   "**/test_*.py:E402,E501",
   "**/experiment/runner.py:E402",
   "**/factory/component.py:E402",
-  "**/manager/ds_cli.py:E402",
-  "**/manager/intro.py:E501",
+  "**/cli/ds_cli.py:E402",
+  "**/cli/intro.py:E501",
   "**/tracking/project.py:E402",
 ]
 
 [tool.setuptools.package-data]
-adgtk = ["*.tar", "*.tar.gz"]
+adgtk = [
+  "*.tar",
+  "*.tar.gz",
+  "skills/*.md",
+  "api/templates/*.html",
+  "api/templates/partials/*.html",
+  "api/static/*",
+]
 
 # [tool.tox.env.docs]
 # deps = [  "sphinx-autobuild","sphinx-build"]

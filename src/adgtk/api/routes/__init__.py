@@ -1,0 +1,1 @@
+"""ADGTK web route handlers."""

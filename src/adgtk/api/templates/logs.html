@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}— Logs{% endblock %}
+{% block content %}
+
+{% if selected %}
+<script>
+  const ROLE_CHIPS = {
+    user:      'bg-indigo-100 text-indigo-700',
+    assistant: 'bg-green-100 text-green-700',
+    system:    'bg-purple-100 text-purple-700',
+    tool:      'bg-cyan-100 text-cyan-700',
+    error:     'bg-red-100 text-red-700',
+    default:   'bg-slate-100 text-slate-600',
+  };
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('logViewer', () => ({
+      file: {{ selected | tojson }},
+      logContent: {{ content | tojson }},
+      paused: false,
+      get isJsonl() { return this.file.endsWith('.jsonl'); },
+      get messages() {
+        if (!this.isJsonl) return [];
+        return this.logContent.split('\n')
+          .filter(l => l.trim())
+          .map(l => { try { return JSON.parse(l); } catch { return null; } })
+          .filter(Boolean);
+      },
+      chipClass(role) {
+        return ROLE_CHIPS[role] || ROLE_CHIPS.default;
+      },
+      async fetchLog() {
+        const r = await fetch('/logs/raw?file=' + encodeURIComponent(this.file));
+        this.logContent = await r.text();
+        this.$nextTick(() => this.scrollBottom());
+      },
+      scrollBottom() {
+        const el = this.$refs.logContainer;
+        if (el) el.scrollTop = el.scrollHeight;
+      },
+      init() {
+        this.$nextTick(() => this.scrollBottom());
+        setInterval(() => { if (!this.paused) this.fetchLog(); }, 3000);
+      }
+    }));
+  });
+</script>
+{% endif %}
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-slate-900">Logs</h1>
+  <p class="text-sm text-slate-500 mt-1">Browse framework, common, and run log files.</p>
+</div>
+
+<div class="flex gap-6 h-[calc(100vh-14rem)]">
+
+  {# ── Left: file list ── #}
+  <aside class="w-64 flex-shrink-0 overflow-y-auto">
+    {% if groups %}
+      {% for group_name, files in groups.items() %}
+      <div class="mb-4">
+        <p class="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">{{ group_name }}</p>
+        <ul class="space-y-0.5">
+          {% for f in files %}
+          <li>
+            <a href="/logs?file={{ f.key | urlencode }}"
+               class="flex items-center justify-between px-3 py-1.5 rounded text-sm transition-colors
+                      {% if selected == f.key %}bg-indigo-50 text-indigo-700 font-medium{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+              <span class="truncate font-mono">{{ f.name }}</span>
+              <span class="text-xs text-slate-400 ml-2 shrink-0">
+                {% if f.size > 1048576 %}{{ (f.size / 1048576) | round(1) }}M
+                {% elif f.size > 1024 %}{{ (f.size / 1024) | round(1) }}K
+                {% else %}{{ f.size }}B{% endif %}
+              </span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    {% else %}
+    <p class="px-3 py-4 text-sm text-slate-400">No log files found.</p>
+    {% endif %}
+  </aside>
+
+  {# ── Right: log content ── #}
+  <div class="flex-1 min-w-0 flex flex-col"
+       {% if selected %}x-data="logViewer"{% endif %}>
+    {% if selected %}
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-mono text-slate-600">{{ selected }}</p>
+      <button @click="paused = !paused"
+              :class="paused
+                ? 'bg-amber-100 text-amber-700 border-amber-200'
+                : 'bg-green-100 text-green-700 border-green-200'"
+              class="text-xs px-3 py-1 rounded border font-medium transition-colors">
+        <span x-text="paused ? '▶ Resume' : '⏸ Pause'">⏸ Pause</span>
+      </button>
+    </div>
+    <div x-ref="logContainer" class="flex-1 rounded-lg overflow-auto"
+         :class="isJsonl ? 'bg-white border border-slate-200' : 'bg-slate-900'">
+      <template x-if="isJsonl">
+        <div class="p-4 space-y-4">
+          <template x-if="messages.length === 0">
+            <p class="text-xs text-slate-400">(empty)</p>
+          </template>
+          <template x-for="(msg, i) in messages" :key="i">
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold"
+                      :class="chipClass(msg.role)"
+                      x-text="msg.role.toUpperCase()"></span>
+                <span class="text-xs text-slate-400 font-mono" x-text="msg.ts"></span>
+              </div>
+              <pre class="text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed pl-2 border-l-2 border-slate-200"
+                   x-text="msg.content"></pre>
+            </div>
+          </template>
+        </div>
+      </template>
+      <template x-if="!isJsonl">
+        <pre class="text-xs font-mono text-slate-100 leading-relaxed p-4 whitespace-pre-wrap"
+             x-text="logContent || '(empty)'">{{ content or '(empty)' }}</pre>
+      </template>
+    </div>
+    {% else %}
+    <div class="flex-1 flex items-center justify-center bg-white rounded-lg border border-slate-200">
+      <p class="text-sm text-slate-400">Select a log file to view its contents.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

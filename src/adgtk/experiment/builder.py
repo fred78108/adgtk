@@ -156,135 +156,114 @@ def _perform_interview(
         # placeholders
         value: Union[AttributeEntry, str, float, int, bool, list] = ""
         factory_id = None
-        if entry.entry_type == "expand":
-            if entry.group is None:
-                raise ValueError("group must be defined for type expand")
-            group_name = entry.group
 
-            if not factory.group_exists(group_name):
-                msg = (f"unknown group {group_name}. Valid groups are: "
+        helper = entry.helper or None
+        default_val: Union[str, int, float, bool, None] = (
+            entry.default_value if isinstance(
+                entry.default_value, (str, int, float, bool))
+            else None
+        )
+        min_val = entry.min_value
+        max_val = entry.max_value
+
+        if entry.entry_type == "expand":
+            assert entry.group is not None
+            if not factory.group_exists(entry.group):
+                msg = (f"unknown group {entry.group}. Valid groups are: "
                        f"{factory.get_group_names()}")
                 _logger.error(msg)
                 raise ValueError(msg)
-
             factory_id = _get_user_selection_from_group(
                 user_prompt=entry.question,
-                group=group_name)
+                group=entry.group)
             value = _expand(factory_id=factory_id, attribute=entry.attribute)
         elif entry.entry_type == "ml-string":
             value = get_user_input(
                 user_prompt=entry.question,
-                requested="ml-str"
+                requested="ml-str",
+                helper=helper,
             )
         elif entry.entry_type == "list[str]":
             value = []
-            tmp_value = get_user_input(
-                    user_prompt=entry.question, requested="str")
-            value.append(tmp_value)
+            value.append(get_user_input(
+                user_prompt=entry.question, requested="str",
+                helper=helper, default_selection=default_val,
+                min_value=min_val, max_value=max_val))
             while get_more_ask():
-                tmp_value = get_user_input(
-                    user_prompt=entry.question, requested="str")
-                value.append(tmp_value)
+                value.append(get_user_input(
+                    user_prompt=entry.question, requested="str",
+                    helper=helper, default_selection=default_val,
+                    min_value=min_val, max_value=max_val))
         elif entry.entry_type == "list[bool]":
             value = []
-            tmp_value = get_user_input(
-                    user_prompt=entry.question, requested="bool")
-            value.append(tmp_value)
+            value.append(get_user_input(
+                user_prompt=entry.question, requested="bool",
+                helper=helper, default_selection=default_val))
             while get_more_ask():
-                tmp_value = get_user_input(
-                    user_prompt=entry.question, requested="bool")
-                value.append(tmp_value)
+                value.append(get_user_input(
+                    user_prompt=entry.question, requested="bool",
+                    helper=helper, default_selection=default_val))
         elif entry.entry_type == "list[int]":
             value = []
-            tmp_value = get_user_input(
-                    user_prompt=entry.question, requested="int")
-            value.append(tmp_value)
+            value.append(get_user_input(
+                user_prompt=entry.question, requested="int",
+                helper=helper, default_selection=default_val,
+                min_value=min_val, max_value=max_val))
             while get_more_ask():
-                tmp_value = get_user_input(
-                    user_prompt=entry.question, requested="int")
-                value.append(tmp_value)
+                value.append(get_user_input(
+                    user_prompt=entry.question, requested="int",
+                    helper=helper, default_selection=default_val,
+                    min_value=min_val, max_value=max_val))
         elif entry.entry_type == "list[float]":
             value = []
-            tmp_value = get_user_input(
-                    user_prompt=entry.question, requested="float")
-            value.append(tmp_value)
+            value.append(get_user_input(
+                user_prompt=entry.question, requested="float",
+                helper=helper, default_selection=default_val,
+                min_value=min_val, max_value=max_val))
             while get_more_ask():
-                tmp_value = get_user_input(
-                    user_prompt=entry.question, requested="float")
-                value.append(tmp_value)
+                value.append(get_user_input(
+                    user_prompt=entry.question, requested="float",
+                    helper=helper, default_selection=default_val,
+                    min_value=min_val, max_value=max_val))
         elif entry.entry_type == "list[expand]":
-            # get the minimum values
-            if entry.group is None:
-                raise ValueError("group must be defined for type expand")
-
-            group_name = entry.group
+            assert entry.group is not None
             value = []
+            factory_id = _get_user_selection_from_group(
+                user_prompt=entry.question,
+                group=entry.group)
+            value.append(_expand(
+                factory_id=factory_id, attribute=entry.attribute))
             while get_more_ask():
                 factory_id = _get_user_selection_from_group(
                     user_prompt=entry.question,
-                    group=group_name)
-
-                exp_value = _expand(factory_id=factory_id,
-                                    attribute=entry.attribute)
-                value.append(exp_value)
-
+                    group=entry.group)
+                value.append(_expand(
+                    factory_id=factory_id, attribute=entry.attribute))
         elif entry.choices is not None and len(entry.choices) > 0:
-            # handle all choice based calls here
-            if entry.entry_type == "bool":
+            if entry.entry_type in ("bool", "str", "int", "float"):
                 value = get_user_input(
                     user_prompt=entry.question,
-                    requested="bool",
+                    requested=entry.entry_type,
                     configuring=item_being_built,
-                    choices=entry.choices
-                )
-            elif entry.entry_type == "str":
-                value = get_user_input(
-                    user_prompt=entry.question,
-                    requested="str",
-                    configuring=item_being_built,
-                    choices=entry.choices
-                )
-            elif entry.entry_type == "int":
-                value = get_user_input(
-                    user_prompt=entry.question,
-                    requested="int",
-                    configuring=item_being_built,
-                    choices=entry.choices
-                )
-            elif entry.entry_type == "float":
-                value = get_user_input(
-                    user_prompt=entry.question,
-                    requested="float",
-                    configuring=item_being_built,
-                    choices=entry.choices
+                    choices=entry.choices,
+                    helper=helper,
+                    default_selection=default_val,
+                    min_value=min_val,
+                    max_value=max_val,
                 )
             else:
                 raise ValueError(
                     "Unexpected requested combination with choices")
         else:
-            if entry.entry_type == "bool":
+            if entry.entry_type in ("bool", "str", "int", "float"):
                 value = get_user_input(
                     user_prompt=entry.question,
-                    requested="bool",
-                    configuring=item_being_built
-                )
-            elif entry.entry_type == "str":
-                value = get_user_input(
-                    user_prompt=entry.question,
-                    requested="str",
-                    configuring=item_being_built
-                )
-            elif entry.entry_type == "int":
-                value = get_user_input(
-                    user_prompt=entry.question,
-                    requested="int",
-                    configuring=item_being_built
-                )
-            elif entry.entry_type == "float":
-                value = get_user_input(
-                    user_prompt=entry.question,
-                    requested="float",
-                    configuring=item_being_built
+                    requested=entry.entry_type,
+                    configuring=item_being_built,
+                    helper=helper,
+                    default_selection=default_val,
+                    min_value=min_val,
+                    max_value=max_val,
                 )
         if isinstance(value, str) and len(value) == 0:
             raise ValueError("Value not captured")
@@ -461,7 +440,6 @@ def build_experiment(
         raise ValueError("Unexpected return for description")
 
     exp_def = ExperimentDefinition(
-        name=name,
         attribute=EXPERIMENT_LABEL,
         description=description,
         init_config=scenario_config,

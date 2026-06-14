@@ -13,8 +13,10 @@ note: Initial test cases generated via a model. Modified for clarity
 """
 
 import logging
+import logging.handlers
 import pytest
-from adgtk.utils.logs import create_logger
+from adgtk.utils.logs import create_logger, is_project_context, get_project_logger
+from adgtk.utils.defaults import PROJECT_LOGGER_NAME
 
 
 @pytest.fixture(autouse=True)
@@ -118,3 +120,86 @@ def test_agent_subdir_creates_correct_path(tmp_path):
     assert log_path.exists(), "Agent log file was not created"
     content = log_path.read_text()
     assert "Agent log message" in content
+
+
+# ----------------------------------------------------------------------
+# is_project_context / get_project_logger tests (4.2)
+# ----------------------------------------------------------------------
+
+@pytest.fixture(autouse=False)
+def clean_project_logger():
+    """Remove the project logger between tests so handler state is fresh."""
+    def _evict():
+        logger = logging.getLogger(PROJECT_LOGGER_NAME)
+        for h in logger.handlers[:]:
+            logger.removeHandler(h)
+            h.close()
+        logging.Logger.manager.loggerDict.pop(PROJECT_LOGGER_NAME, None)
+
+    _evict()
+    yield
+    _evict()
+
+
+def test_is_project_context_true(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "bootstrap.py").touch()
+    assert is_project_context() is True
+
+
+def test_is_project_context_false(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert is_project_context() is False
+
+
+def test_get_project_logger_outside_project_no_disk_write(
+        tmp_path, monkeypatch, clean_project_logger):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("adgtk.utils.logs.LOG_DIR", str(tmp_path / "logs"))
+    logger = get_project_logger()
+    assert any(isinstance(h, logging.NullHandler) for h in logger.handlers)
+    assert not (tmp_path / "logs").exists()
+
+
+def test_get_project_logger_inside_project_creates_file(
+        tmp_path, monkeypatch, clean_project_logger):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "bootstrap.py").touch()
+    monkeypatch.setattr("adgtk.utils.logs.LOG_DIR", str(tmp_path / "logs"))
+    logger = get_project_logger()
+    assert any(isinstance(h, logging.FileHandler) for h in logger.handlers)
+    assert (tmp_path / "logs" / "framework").is_dir()
+
+
+# ----------------------------------------------------------------------
+# 4.4 Log rotation tests
+# ----------------------------------------------------------------------
+
+def test_framework_subdir_uses_rotating_handler():
+    logger = create_logger(
+        logfile="rotate.log",
+        logger_name="rotate_test_logger",
+        subdir="framework",
+    )
+    rotating = [
+        h for h in logger.handlers
+        if isinstance(h, logging.handlers.RotatingFileHandler)
+    ]
+    assert len(rotating) == 1
+    assert rotating[0].maxBytes == 5_000_000
+    assert rotating[0].backupCount == 3
+
+
+def test_runs_subdir_uses_plain_file_handler():
+    logger = create_logger(
+        logfile="run.log",
+        logger_name="runs_test_logger",
+        subdir="runs",
+        experiment_name="myexp",
+    )
+    handlers = logger.handlers
+    assert not any(
+        isinstance(h, logging.handlers.RotatingFileHandler)
+        for h in handlers
+    )
+    assert any(type(h) is logging.FileHandler for h in handlers)

@@ -1,0 +1,83 @@
+<div class="flex flex-col h-full">
+
+  <!-- Header -->
+  <div class="px-6 py-4 border-b border-slate-200">
+    {% if is_list %}
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-xs font-medium text-indigo-600 bg-indigo-50 rounded px-2 py-0.5">
+        Item {{ count + 1 }}
+      </span>
+    </div>
+    {% endif %}
+    <h3 class="text-sm font-semibold text-slate-900">{{ question.question }}</h3>
+    {% if question.helper %}
+    <p class="text-xs text-slate-400 mt-1">{{ question.helper }}</p>
+    {% endif %}
+    <p class="text-xs text-slate-400 mt-1">
+      Group: <span class="font-mono">{{ question.group }}</span>
+    </p>
+  </div>
+
+  <!-- Component list -->
+  {% if entries %}
+  <div class="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+    {% for entry in entries %}
+    <form hx-post="/experiments/builder/expand-pick"
+          hx-target="#builder-content"
+          hx-swap="innerHTML">
+      <input type="hidden" name="state_json" value="{{ state_json }}">
+      <input type="hidden" name="picked_factory_id" value="{{ entry.factory_id }}">
+      <button type="submit"
+              class="w-full text-left rounded-lg border px-4 py-3
+                     transition-colors group
+                     {% if prefill_factory_id == entry.factory_id %}
+                       border-indigo-400 bg-indigo-50
+                     {% else %}
+                       border-slate-200 hover:border-indigo-400 hover:bg-indigo-50
+                     {% endif %}">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-mono text-sm font-medium text-slate-900
+                        group-hover:text-indigo-700
+                        {% if prefill_factory_id == entry.factory_id %}text-indigo-700{% endif %}">
+              {{ entry.factory_id }}
+              {% if prefill_factory_id == entry.factory_id %}
+              <span class="ml-1 text-xs font-sans font-normal text-indigo-500">current</span>
+              {% endif %}
+            </div>
+            <div class="text-sm text-slate-500 mt-0.5">{{ entry.summary }}</div>
+          </div>
+          {% if entry.tags %}
+          <div class="flex flex-wrap gap-1 flex-shrink-0 mt-0.5">
+            {% for tag in entry.tags %}
+            <span class="rounded px-1.5 py-0.5 text-xs bg-slate-100 text-slate-500">
+              {{ tag }}
+            </span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </button>
+    </form>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="flex-1 flex items-center justify-center px-6 py-12 text-center">
+    <p class="text-sm text-slate-400">
+      No components in group <span class="font-mono">{{ question.group }}</span>.
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Footer -->
+  <div class="px-6 py-4 border-t border-slate-200">
+    <button type="button"
+            hx-get="/experiments/builder"
+            hx-target="#builder-content"
+            hx-swap="innerHTML"
+            class="text-sm text-slate-500 hover:text-slate-700">
+      ← Scenarios
+    </button>
+  </div>
+
+</div>

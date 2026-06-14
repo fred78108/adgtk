@@ -1,0 +1,51 @@
+{# Researcher notes partial — rendered by GET/POST/DELETE /results/{exp}/{run}/notes #}
+{% set conclusion_base = "/results/" ~ experiment ~ "/" ~ run_id ~ "/notes" %}
+
+{% if notes %}
+<div class="space-y-3 mb-6">
+  {% for note in notes %}
+  <div class="bg-white rounded-lg border border-slate-200 shadow-sm px-5 py-4 flex gap-4 items-start">
+    <div class="flex-1 min-w-0">
+      <p class="text-xs text-slate-400 font-mono mb-1">{{ note.timestamp }}</p>
+      <p class="text-sm text-slate-800 whitespace-pre-wrap">{{ note.text }}</p>
+    </div>
+    <button
+      hx-delete="{{ conclusion_base }}/{{ note.note_id }}"
+      hx-target="#notes-panel"
+      hx-swap="innerHTML"
+      hx-confirm="Delete this note?"
+      class="shrink-0 text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1 rounded hover:bg-red-50">
+      Delete
+    </button>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-sm text-slate-400 mb-6">No notes yet. Add one below.</p>
+{% endif %}
+
+<div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+  <div class="px-5 py-4 border-b border-slate-100">
+    <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide">Add a note</h3>
+  </div>
+  <form
+    hx-post="{{ conclusion_base }}"
+    hx-target="#notes-panel"
+    hx-swap="innerHTML"
+    hx-on::after-request="this.reset()"
+    class="px-5 py-4 space-y-3">
+    <textarea
+      name="text"
+      rows="4"
+      required
+      placeholder="Write your observation, finding, or question here…"
+      class="w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder-slate-400
+             focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 resize-y"></textarea>
+    <div class="flex justify-end">
+      <button type="submit"
+              class="px-4 py-2 rounded bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors">
+        Save note
+      </button>
+    </div>
+  </form>
+</div>

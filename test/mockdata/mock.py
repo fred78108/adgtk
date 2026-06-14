@@ -9,14 +9,13 @@ v 0.1
 
 
 from dataclasses import dataclass
-from adgtk.common import (
+from adgtk.utils import (
     FactoryBlueprint,
     InvalidBlueprint,
     ArgumentSetting,
     ArgumentType,
     ComponentDef)
 from adgtk.factory import ObjectFactory
-from adgtk.journals import ExperimentJournal
 
 # ----------------------------------------------------------------------
 # Constants
@@ -199,11 +198,9 @@ class DummyClass:
     def __init__(
         self,
         factory: ObjectFactory,
-        journal: ExperimentJournal,
         **args
     ) -> None:
         self._factory = factory
-        self._journal = journal
         self.count = 0
         if "count" in args:
             self.count = args["count"]
@@ -221,12 +218,9 @@ class PetDummyClass:
     def __init__(
         self,
         factory: ObjectFactory,
-        journal: ExperimentJournal,
         **args
     ) -> None:
         self._factory = factory
-        self._journal = journal
-
         if "cat" in args:
             self.cat = args["cat"]
 
@@ -239,12 +233,9 @@ class TabbyCat:
     def __init__(
         self,
         factory: ObjectFactory,
-        journal: ExperimentJournal,
         **args
     ) -> None:
         self._factory = factory
-        self._journal = journal
-
         self.count = 0
         if "count" in args:
             self.count = args["count"]
@@ -258,12 +249,9 @@ class SiameseCat:
     def __init__(
         self,
         factory: ObjectFactory,
-        journal: ExperimentJournal,
         **args
     ) -> None:
         self._factory = factory
-        self._journal = journal
-
         self.count = 0
         if "count" in args:
             self.count = args["count"]
@@ -277,12 +265,9 @@ class OrangeCat:
     def __init__(
         self,
         factory: ObjectFactory,
-        journal: ExperimentJournal,
         **args
     ) -> None:
         self._factory = factory
-        self._journal = journal
-
         self.count = 0
         if "count" in args:
             self.count = args["count"]
@@ -296,12 +281,9 @@ class PetHome:
     def __init__(
         self,
         factory: ObjectFactory,
-        journal: ExperimentJournal,
         **args
     ) -> None:
         self._factory = factory
-        self._journal = journal
-
         self.count = 0
         if "count" in args:
             self.count = args["count"]
@@ -315,12 +297,9 @@ class PetWork:
     def __init__(
         self,
         factory: ObjectFactory,
-        journal: ExperimentJournal,
         **args
     ) -> None:
         self._factory = factory
-        self._journal = journal
-
         self.count = 0
         if "count" in args:
             self.count = args["count"]
@@ -334,22 +313,9 @@ class MockScenario:
     def __init__(
         self,
         factory: ObjectFactory,
-        journal: ExperimentJournal,
         **args
     ) -> None:
-        """A Mock Scenario used for testing. This Scenario provides a
-        good example of how to use the factory to create internal
-        objects.
-
-        :param factory: The factory to load
-        :type factory: ObjectFactory
-        :param journal: Not used yet. needed by Protocol
-        :type journal: ExperimentJournal
-        :raises InvalidBlueprint: When the blueprint is invalid
-        """
         self._factory = factory
-        self._journal = journal
-
         self.count = 0
         if "count" in args:
             self.count = args["count"]
@@ -376,12 +342,7 @@ class TabbyOptionalFactoryClass:
     description = "testing"
     blueprint: FactoryBlueprint = MOCK_SCENARIO_ONE_BP
 
-    def __init__(
-        self,
-        journal: ExperimentJournal,
-        **args
-    ) -> None:
-        self._journal = journal
+    def __init__(self, **args) -> None:
         self.count = 0
         if "count" in args:
             self.count = args["count"]

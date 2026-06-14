@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}— Run {{ name }}{% endblock %}
+{% block content %}
+
+<div class="mb-6">
+  <div class="mb-1">
+    <a href="/experiments"
+       class="text-sm text-slate-500 hover:text-slate-700">← Experiments</a>
+  </div>
+  <h1 class="text-2xl font-bold text-slate-900">{{ name }}</h1>
+  <p class="text-sm text-slate-500 mt-1">Configure and launch experiment runs</p>
+</div>
+
+<div class="max-w-sm bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+  <form hx-post="/experiments/{{ name }}/runner"
+        hx-target="#runner-feedback"
+        hx-swap="innerHTML">
+    <div class="mb-5">
+      <label for="n_runs"
+             class="block text-sm font-medium text-slate-700 mb-1">
+        Number of runs
+      </label>
+      <input id="n_runs" name="n_runs" type="number"
+             value="1" min="1"
+             class="w-full rounded-md border border-slate-300 px-3 py-2
+                    text-sm shadow-sm focus:outline-none focus:ring-2
+                    focus:ring-indigo-500 focus:border-indigo-500">
+      <p class="text-xs text-slate-400 mt-1">
+        Runs are executed sequentially.
+      </p>
+    </div>
+
+    <button type="submit"
+            class="w-full px-4 py-2 rounded-md bg-indigo-600 text-white
+                   text-sm font-medium hover:bg-indigo-700
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      Run
+    </button>
+  </form>
+
+  <div id="runner-feedback" class="mt-4"></div>
+</div>
+
+{% endblock %}

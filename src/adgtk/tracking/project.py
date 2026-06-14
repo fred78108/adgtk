@@ -24,28 +24,14 @@ TODO
 3. do I write scenario results here?
 """
 import os
-import sys
-# before importing others
-# ----------------------------------------------------------------------
-# Start of path verification
-# ----------------------------------------------------------------------
-path = os.getcwd()
-bootstrap_file = os.path.join(path, "bootstrap.py")
-if not os.path.exists(bootstrap_file):
-    print("ERROR: Unable to locate the bootstrap.py. Please check your path.")
-    sys.exit(1)
-# ----------------------------------------------------------------------
-# End of path verification
-# ----------------------------------------------------------------------
 
 # setup logfile for this and sub-modules
+from adgtk.utils.defaults import EXP_RESULTS_FOLDER, TRACKING_FOLDER
 from adgtk.tracking.structure import (
     AvailableExperimentModel,
     ExperimentEntryModel,
-    PrefixModel,
-    EXP_RESULTS_FOLDER,
-    TRACKING_FOLDER)
-from adgtk.common.defaults import EXP_DEF_DIR
+    PrefixModel)
+from adgtk.utils.defaults import EXP_DEF_DIR
 from pydantic import BaseModel, ValidationError
 import yaml
 import uuid
@@ -195,6 +181,8 @@ def _refresh_using_blueprints():
     It does not modify the prefix tracking, only the experiment
     inventory.
     """
+    global _available_experiments
+    _available_experiments = []
     files = os.listdir(EXP_DEF_DIR)
     files_w_path = [os.path.join(EXP_DEF_DIR, file) for file in files]
     for file in files_w_path:
@@ -205,14 +193,10 @@ def _refresh_using_blueprints():
                 _logger.error(f"Unable to process {file} on refresh.")
                 continue
 
-            # verify naming alignment (file to file_data.name)
-            file_part = os.path.basename(file)
-            if not file_part.removesuffix(".yaml") == file_data["name"]:
-                _logger.error(f"name to filename mismatch for {file}")
-                continue
+            name = os.path.basename(file).removesuffix(".yaml")
             try:
                 entry = AvailableExperimentModel(
-                    name=file_data["name"],
+                    name=name,
                     description=file_data["description"])
             except KeyError:
                 _logger.error(f"missing required keys for {file}")
@@ -555,11 +539,14 @@ def get_next_experiment_run_id(
         if not os.path.exists(exp_root):
             msg = f"unable to inspect {exp_root} for next run_id"
             _logger.warning(msg)
-            exp_name = "0." + experiment_name
+            exp_name = "0"
         else:
-            # count the folders
-            prev_runs = os.listdir(exp_root)
-            exp_name = str(len(prev_runs)) + "." + experiment_name
+            nums = []
+            for d in os.listdir(exp_root):
+                if d.isdigit():
+                    nums.append(int(d))
+            next_num = (max(nums) + 1) if nums else 0
+            exp_name = str(next_num)
     else:
         # use random
         exp_name = secrets.token_hex(4) + experiment_name

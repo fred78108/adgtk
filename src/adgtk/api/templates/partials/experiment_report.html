@@ -1,0 +1,11 @@
+{% if error %}
+<div class="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-4 py-3">
+  Failed to generate report: {{ error }}
+</div>
+{% elif report_html %}
+<div class="report-content">{{ report_html | safe }}</div>
+{% else %}
+<p class="text-sm text-slate-400 text-center py-8">
+  No runs found — nothing to include in the report.
+</p>
+{% endif %}

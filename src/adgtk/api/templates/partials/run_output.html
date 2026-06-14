@@ -1,0 +1,12 @@
+<div class="space-y-2">
+  <p class="text-xs font-medium text-slate-500">{{ label }}</p>
+  <div class="bg-slate-900 rounded-md p-4 overflow-auto max-h-96 text-slate-100"
+       hx-ext="sse"
+       sse-connect="/tasks/{{ task.task_id }}/stream"
+       sse-swap="message"
+       hx-swap="beforeend scroll:bottom">
+    <div id="sse-done-{{ task.task_id }}"
+         sse-swap="done"
+         hx-swap="beforeend"></div>
+  </div>
+</div>

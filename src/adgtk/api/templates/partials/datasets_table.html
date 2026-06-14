@@ -1,0 +1,135 @@
+<div id="dataset-table"
+     hx-get="/datasets/table"
+     hx-trigger="refresh"
+     hx-target="#dataset-table"
+     hx-swap="outerHTML">
+
+{% if rows %}
+<div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+  <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <thead class="bg-slate-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">File</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Encoding</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tags</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Used by</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+        <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for row in rows %}
+      {% set d = row.defn %}
+      {% set exists = row.exists %}
+      <tr class="hover:bg-slate-50">
+
+        <td class="px-6 py-3">
+          <a href="/datasets/{{ d.file_id }}"
+             class="font-mono text-indigo-600 hover:underline text-xs">
+            {{ d.file_id }}
+          </a>
+        </td>
+
+        <td class="px-6 py-3">
+          <span class="font-mono text-slate-900 text-sm" title="{{ d.path }}/{{ d.filename }}">
+            {{ d.filename }}
+          </span>
+        </td>
+
+        <td class="px-6 py-3">
+          {% set enc_colors = {
+            "csv":     "bg-emerald-100 text-emerald-800",
+            "json":    "bg-blue-100 text-blue-800",
+            "hf-json": "bg-blue-100 text-blue-800",
+            "text":    "bg-slate-100 text-slate-700",
+            "pickle":  "bg-purple-100 text-purple-800",
+            "pandas":  "bg-purple-100 text-purple-800",
+          } %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                       {{ enc_colors.get(d.encoding, 'bg-slate-100 text-slate-600') }}">
+            {{ d.encoding }}
+          </span>
+        </td>
+
+        <td class="px-6 py-3">
+          <div class="flex flex-wrap gap-1">
+            {% if d.tags %}
+              {% for tag in d.tags %}
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs
+                           bg-indigo-50 text-indigo-700 border border-indigo-100">
+                {{ tag }}
+              </span>
+              {% endfor %}
+            {% else %}
+              <span class="text-slate-400 text-xs">—</span>
+            {% endif %}
+          </div>
+        </td>
+
+        <td class="px-6 py-3">
+          {% set bps = row.blueprints %}
+          {% if bps %}
+          <div x-data="{ open: false }" class="relative">
+            <button @click="open = !open"
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs
+                           font-medium bg-amber-50 text-amber-700 border
+                           border-amber-200 hover:bg-amber-100 cursor-pointer
+                           tabindex='0'">
+              {{ bps|length }} blueprint{{ 's' if bps|length != 1 else '' }}
+            </button>
+            <div x-show="open"
+                 x-cloak
+                 @click.outside="open = false"
+                 class="absolute z-10 mt-1 w-56 rounded-md bg-white shadow-lg
+                        ring-1 ring-black/5 py-1">
+              {% for bp in bps %}
+              <div class="px-3 py-1 text-xs font-mono text-slate-700 hover:bg-slate-50">
+                {{ bp }}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <span class="text-slate-400 text-xs">—</span>
+          {% endif %}
+        </td>
+
+        <td class="px-6 py-3">
+          {% if exists %}
+          <span class="text-xs text-green-700">✓</span>
+          {% else %}
+          <span class="text-xs text-red-600" title="File not found on disk">✗ missing</span>
+          {% endif %}
+        </td>
+
+        <td class="px-6 py-3 text-right whitespace-nowrap">
+          <a href="/datasets/{{ d.file_id }}"
+             class="px-3 py-1 rounded border border-slate-300 text-slate-600 text-xs
+                    font-medium hover:bg-slate-50 mr-1">
+            View
+          </a>
+          <button hx-post="/datasets/{{ d.file_id }}/retire"
+                  hx-target="#dataset-flash"
+                  hx-swap="innerHTML"
+                  hx-confirm="Retire '{{ d.file_id }}'? The file will not be deleted."
+                  class="px-3 py-1 rounded border border-red-300 text-red-600 text-xs
+                         font-medium hover:bg-red-50">
+            Retire
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-white rounded-lg border border-slate-200 shadow-sm px-6 py-12 text-center">
+  <p class="text-sm text-slate-400">
+    No datasets registered yet. Use the button above or
+    <code class="font-mono">adgtk-ds register</code> from the CLI.
+  </p>
+</div>
+{% endif %}
+
+</div>

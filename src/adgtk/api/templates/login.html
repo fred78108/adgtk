@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <title>ADGTK — Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full flex items-center justify-center">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-bold text-slate-900">ADGTK</h1>
+      <p class="text-sm text-slate-500 mt-1">Enter your token to continue</p>
+    </div>
+    <div class="bg-white shadow-sm rounded-lg border border-slate-200 px-8 py-6">
+      {% if error %}
+      <div class="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+        {{ error }}
+      </div>
+      {% endif %}
+      <form method="post" action="/auth/login">
+        <input type="hidden" name="next" value="{{ next | default('/') }}">
+        <div class="mb-4">
+          <label for="token" class="block text-sm font-medium text-slate-700 mb-1">Token</label>
+          <input id="token" name="token" type="password" autocomplete="off"
+                 class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                        font-mono"
+                 placeholder="paste token here" autofocus>
+        </div>
+        <button type="submit"
+                class="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium
+                       text-white hover:bg-indigo-700 focus:outline-none focus:ring-2
+                       focus:ring-indigo-500 focus:ring-offset-2">
+          Sign in
+        </button>
+      </form>
+    </div>
+    <p class="text-center text-xs text-slate-400 mt-4">
+      The token was printed to the server console on startup.
+    </p>
+  </div>
+</body>
+</html>

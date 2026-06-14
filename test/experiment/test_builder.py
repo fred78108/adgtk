@@ -24,6 +24,7 @@ from adgtk.factory.structure import BlueprintQuestion
 # data and fixtures
 # ----------------------------------------------------------------------
 
+
 class DummyEntry:
     """A dummy entry class for mocking factory objects."""
 
@@ -36,6 +37,7 @@ class DummyEntry:
         """
         self.factory_id = factory_id
         self.summary = summary
+
 
 @pytest.fixture
 def mock_factory(monkeypatch):
@@ -65,6 +67,7 @@ def mock_factory(monkeypatch):
     monkeypatch.setattr("adgtk.experiment.builder.factory", factory_mock)
     return factory_mock
 
+
 @pytest.fixture
 def mock_input(monkeypatch):
     """Pytest fixture to simulate a sequence of user answers."""
@@ -79,6 +82,7 @@ def mock_input(monkeypatch):
         "adgtk.experiment.builder.get_user_input",
         lambda **kwargs: next(answers))
     return answers
+
 
 @pytest.fixture(autouse=True)
 def reset_working_on():
@@ -209,12 +213,11 @@ def test_build_experiment(
     import yaml
     with open(out_file, "r") as f:
         data = yaml.safe_load(f)
-    assert data["name"] == "test.0.1"                   # sys named it
     assert data["description"] == "ExpDescription"
     assert data["attribute"] == "experiment"
     # an experiment should always be a dict for the scenario then
     # the scenario should have a list of dicts w/init_config
-    assert isinstance(data["init_config"], dict)    
+    assert isinstance(data["init_config"], dict)
     assert isinstance(data["init_config"]["init_config"], list)
     assert data["init_config"]["init_config"][0]["attribute"] == "foo"
     assert data["init_config"]["init_config"][0]["init_config"] == "interview_answer"

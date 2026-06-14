@@ -28,14 +28,16 @@ Notes
    overall code maintenance for this project.
 """
 from abc import ABC
+import inspect
 import secrets
+import warnings
 from typing import (
     Callable,
     ClassVar,
     Literal,
     Optional,
     Union)
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ----------------------------------------------------------------------
@@ -57,6 +59,32 @@ SupportedCaptureTypes = Literal[
     ]
 
 SupportedChoiceTypes = Union[int, float, str]
+
+
+class EntryType:
+    """Named constants for BlueprintQuestion entry_type values.
+
+    Use these instead of raw strings to get IDE autocompletion and
+    avoid typos at class definition time.
+
+    Example::
+
+        BlueprintQuestion.float_field("lr", "Learning rate?",
+                                      min_value=1e-5, max_value=1.0)
+        BlueprintQuestion(attribute="mode", question="Mode?",
+                          entry_type=EntryType.STR, choices=["fast", "slow"])
+    """
+    STR: Literal["str"] = "str"
+    INT: Literal["int"] = "int"
+    FLOAT: Literal["float"] = "float"
+    BOOL: Literal["bool"] = "bool"
+    ML_STR: Literal["ml-string"] = "ml-string"
+    LIST_STR: Literal["list[str]"] = "list[str]"
+    LIST_INT: Literal["list[int]"] = "list[int]"
+    LIST_FLOAT: Literal["list[float]"] = "list[float]"
+    LIST_BOOL: Literal["list[bool]"] = "list[bool]"
+    EXPAND: Literal["expand"] = "expand"
+    LIST_EXPAND: Literal["list[expand]"] = "list[expand]"
 
 # ----------------------------------------------------------------------
 # Structures - User-facing models (external data)
@@ -91,6 +119,100 @@ class BlueprintQuestion(BaseModel):
     choices: list[SupportedChoiceTypes] = Field(default_factory=list)
     default_value: Optional[SupportedChoiceTypes] = None
 
+    @model_validator(mode="after")
+    def _require_group_for_expand(self) -> "BlueprintQuestion":
+        if self.entry_type in (
+            EntryType.EXPAND, EntryType.LIST_EXPAND
+        ) and self.group is None:
+            raise ValueError(
+                f"attribute '{self.attribute}': entry_type '{self.entry_type}'"
+                " requires group to be set"
+            )
+        return self
+
+    # ------------------------------------------------------------------
+    # Convenience constructors
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def str_field(
+        cls, attribute: str, question: str, **kw
+    ) -> "BlueprintQuestion":
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.STR, **kw)
+
+    @classmethod
+    def int_field(
+        cls, attribute: str, question: str, **kw
+    ) -> "BlueprintQuestion":
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.INT, **kw)
+
+    @classmethod
+    def float_field(
+        cls, attribute: str, question: str, **kw
+    ) -> "BlueprintQuestion":
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.FLOAT, **kw)
+
+    @classmethod
+    def bool_field(
+        cls, attribute: str, question: str, **kw
+    ) -> "BlueprintQuestion":
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.BOOL, **kw)
+
+    @classmethod
+    def ml_string_field(
+        cls, attribute: str, question: str, **kw
+    ) -> "BlueprintQuestion":
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.ML_STR, **kw)
+
+    @classmethod
+    def list_str_field(
+        cls, attribute: str, question: str, **kw
+    ) -> "BlueprintQuestion":
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.LIST_STR, **kw)
+
+    @classmethod
+    def list_int_field(
+        cls, attribute: str, question: str, **kw
+    ) -> "BlueprintQuestion":
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.LIST_INT, **kw)
+
+    @classmethod
+    def list_float_field(
+        cls, attribute: str, question: str, **kw
+    ) -> "BlueprintQuestion":
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.LIST_FLOAT, **kw)
+
+    @classmethod
+    def list_bool_field(
+        cls, attribute: str, question: str, **kw
+    ) -> "BlueprintQuestion":
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.LIST_BOOL, **kw)
+
+    @classmethod
+    def expand_field(
+        cls, attribute: str, question: str, group: str, **kw
+    ) -> "BlueprintQuestion":
+        """group is required."""
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.EXPAND, group=group, **kw)
+
+    @classmethod
+    def list_expand_field(
+        cls, attribute: str, question: str, group: str, **kw
+    ) -> "BlueprintQuestion":
+        """group is required."""
+        return cls(attribute=attribute, question=question,
+                   entry_type=EntryType.LIST_EXPAND, group=group, **kw)
+
 
 class FactoryOrder(BaseModel):
     """An experiment will define an 'order' for the factory. The ideal
@@ -111,10 +233,6 @@ class FactoryEntry(BaseModel):
     interview_blueprint: list[BlueprintQuestion] = Field(default_factory=list)
     factory_can_init: bool = True
 
-# ----------------------------------------------------------------------
-# Structures - Internal helpers (non-validated)
-# ----------------------------------------------------------------------
-
 
 # ----------------------------------------------------------------------
 # Protocols / Abstract Classes
@@ -133,3 +251,15 @@ class SupportsFactory(ABC):
     interview_blueprint: ClassVar[list[BlueprintQuestion]] = []
     summary: ClassVar[str] = "No summary found"
     factory_can_init: ClassVar[bool] = True
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        super().__init_subclass__(**kwargs)
+        if inspect.isabstract(cls):
+            return
+        for attr in ("factory_id", "group"):
+            if not hasattr(cls, attr):
+                warnings.warn(
+                    f"{cls.__name__} is missing required ClassVar '{attr}' "
+                    "for SupportsFactory — it will fail on registration.",
+                    stacklevel=2,
+                )

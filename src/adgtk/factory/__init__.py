@@ -1,6 +1,7 @@
 """Common and useful outside of the module."""
 from .structure import (
     BlueprintQuestion,
+    EntryType,
     FactoryOrder,
     SupportedCaptureTypes,
     SupportedChoiceTypes,

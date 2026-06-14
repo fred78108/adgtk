@@ -289,8 +289,8 @@ def get_user_input(
     default_selection: Union[float, str, int, bool, None] = None,
     max_characters: Union[int, None] = None,
     min_characters: Union[int, None] = None,
-    min_value: Union[int, None] = None,
-    max_value: Union[int, None] = None,
+    min_value: Union[int, float, None] = None,
+    max_value: Union[int, float, None] = None,
     limit_ml_line_length: Optional[int] = None
 ) -> Union[str, int, float, bool]:
     """Prompts the user for input with validation and UI features.

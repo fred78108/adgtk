@@ -4,9 +4,7 @@ is the root of any experiment.
 TODO
 ====
 
-1. finalize design for how to handle results
-2. log results, experiment run, etc
-3. Test nested definitions
+1. Test nested definitions
 
 Defects
 =======
@@ -16,18 +14,7 @@ Defects
 import datetime
 import os
 import sys
-# before importing others
-# ----------------------------------------------------------------------
-# Start of path verification
-# ----------------------------------------------------------------------
-path = os.getcwd()
-bootstrap_file = os.path.join(path, "bootstrap.py")
-if not os.path.exists(bootstrap_file):
-    print("ERROR: Unable to locate the bootstrap.py. Please check your path.")
-    sys.exit(1)
-# ----------------------------------------------------------------------
-# End of path verification
-# ----------------------------------------------------------------------
+import time
 
 # setup logfile for this and sub-modules
 from adgtk.utils import create_logger
@@ -36,27 +23,37 @@ import inspect
 from typing import Optional, Union
 import yaml
 from pydantic import ValidationError
-from adgtk.common.defaults import (
+from adgtk.utils.defaults import (
     EXP_DEF_DIR,
     BATCH_DEF_DIR,
+    BATCH_LOGGER_NAME,
     SCENARIO_LOGGER_NAME
 )
+from adgtk.utils.exceptions import ActiveTaskFound
 from adgtk.experiment.structure import (
     AttributeEntry,
     ExperimentDefinition,
-    ScenarioResults,
     ScenarioProtocol,
     BuildComponentResult,
 )
 import adgtk.factory.component as factory
 import adgtk.tracking.project as project_manager
-import adgtk.tracking.journal as exp_journal
+import adgtk.tracking.observations as observations
+import adgtk.tracking.runs as run_registry
+from adgtk.tracking.manifest import build_manifest, save as save_manifest
 from adgtk.tracking.structure import (
     AvailableExperimentModel,
-    ExperimentRunFolders)
+    ExperimentRunFolders,
+    RunEntryModel)
 from adgtk.tracking.utils import setup_run
-from adgtk.utils import get_user_input
+from adgtk.utils import get_project_logger, get_user_input
+from adgtk.experiment.result import RunResult
 from adgtk.experiment.structure import BatchDefinition
+from adgtk.experiment.task import (
+    clear_active_task,
+    save_active_task,
+    task_safe_to_start,
+)
 
 
 # ----------------------------------------------------------------------
@@ -70,6 +67,7 @@ TO_CONSOLE = False                           # for development only
 # Logging. target log varies by need
 # ----------------------------------------------------------------------
 _logger: Optional[Logger] = None
+_project_logger: Optional[Logger] = None
 
 # ----------------------------------------------------------------------
 # Helper functions
@@ -169,6 +167,7 @@ def _build_component(
     # the user code does not set init_config.
     if init_config is None:
         init_config = []
+        attribute_def.init_config = init_config
 
     if init_config is None:
         msg = f"Corrupt definition: {attribute_def}. Unexpected None"
@@ -196,6 +195,29 @@ def _build_component(
         # and final check
         if isinstance(item, AttributeEntry):
             args[item.attribute] = _build_component(item)
+
+    # Validate against __init__ signature and add defaults
+    cls = factory.get_callable(factory_id)
+    if inspect.isclass(cls):
+        sig = inspect.signature(cls.__init__)
+        for name, param in sig.parameters.items():
+            if name == 'self':
+                continue
+            if name not in args:
+                if param.default is inspect.Parameter.empty:
+                    msg = f"Required parameter '{name}' missing in "
+                    msg += f"blueprint for factory_id: {factory_id}"
+                    print(msg)
+                    sys.exit(1)
+                else:
+                    args[name] = param.default
+                    # Add to init_config for saving to disk
+                    init_config.append(AttributeEntry(  # type: ignore
+                        attribute=name,
+                        init_config=param.default,
+                        factory_id=None,
+                        factory_init=False
+                    ))
 
     result = factory.create(factory_id=factory_id, **args)
     return result   # type: ignore
@@ -401,7 +423,7 @@ def run_scenario(
     append_timestamp: bool = False,
     use_count: bool = True,
     print_to_console: bool = True
-) -> tuple[ScenarioResults, ExperimentRunFolders]:
+) -> tuple[RunResult, ExperimentRunFolders]:
     """Executes a scenario based on an experiment definition file.
 
     Args:
@@ -411,66 +433,117 @@ def run_scenario(
         print_to_console: Whether to log output to the console.
 
     Returns:
-        A tuple containing the ScenarioResults and the ExperimentRunFolders.
+        A tuple containing the RunResult and the ExperimentRunFolders.
     """
     global _logger
-    exp_journal.reset()  # cover any batch processing
+    global _project_logger
+    _project_logger = get_project_logger()
+    if not task_safe_to_start():
+        _project_logger.warning(
+            "Experiment Runner found an active task. Cancelling request")
+        raise ActiveTaskFound()
+    observations.reset()
     if filename is None:
         exp_name = _select_experiment()
         exp_name += ".yaml"
         filename = os.path.join(EXP_DEF_DIR, exp_name)
     config = _load_experiment_file(filename)
-    run_id = project_manager.get_next_experiment_run_id(
-        experiment_name=config.name,
-        use_count=use_count,
-        append_timestamp=append_timestamp,
-        prefix=None
-    )
-    _logger = create_logger(
-        logfile="scenario.log",
-        logger_name=SCENARIO_LOGGER_NAME,
-        subdir="runs",
-        experiment_name=config.name,
-        log_to_console=print_to_console or TO_CONSOLE
-    )
-    # setup the folders for the results
-    folders = setup_run(experiment_name=config.name, run_id=run_id)
-    # and save a copy for future reference
-    _save_copy_of_config(config=config, root_dir=folders.root_dir)
-    # so I  can log
-    log_file = os.path.join("logs", "runs", config.name, "scenario.log")
-    scenario = _load_scenario(config)
-    _logger.info("-"*60)
-    _logger.info("Starting Scenario")
-    _logger.info("Results folder: %s", folders.root_dir)
-    _logger.info("Starting logging at %s", log_file)
-    _logger.info("-"*60)
-    intro = f"| Starting experiment {config.name}: run {run_id} |"
-    print("-"*len(intro))
-    print(intro)
-    print("-"*len(intro))
-    result = scenario.run_scenario(result_folders=folders)
-    exp_journal.save_journal(folders.conclusion)
-    _logger.info("-"*60)
-    _logger.info("Scenario Execution complete")
-    _logger.info("-"*60)
+    experiment_name = os.path.basename(filename).removesuffix(".yaml")
+    _task_id = save_active_task(experiment_name)
+    _project_logger.info("Experiment runner is starting task %s", _task_id)
+    try:
+        run_id = project_manager.get_next_experiment_run_id(
+            experiment_name=experiment_name,
+            use_count=use_count,
+            append_timestamp=append_timestamp,
+            prefix=None
+        )
+        _logger = create_logger(
+            logfile="scenario.log",
+            logger_name=SCENARIO_LOGGER_NAME,
+            subdir="runs",
+            experiment_name=experiment_name,
+            log_to_console=print_to_console or TO_CONSOLE
+        )
+        # setup the folders for the results
+        folders = setup_run(experiment_name=experiment_name, run_id=run_id)
+        scenario = _load_scenario(config)
+        _save_copy_of_config(config=config, root_dir=folders.root_dir)
+        # so I  can log
+        log_file = os.path.join(
+            "logs", "runs", experiment_name, "scenario.log"
+        )
+        _logger.info("-"*60)
+        _logger.info("Starting Scenario")
+        _logger.info("Results folder: %s", folders.root_dir)
+        _logger.info("Starting logging at %s", log_file)
+        _logger.info("-"*60)
+        intro = f"| Starting experiment {experiment_name}: run {run_id} |"
+        print("-"*len(intro))
+        print(intro)
+        print("-"*len(intro))
+        _run_start_ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        _mono_start = time.monotonic()
+        result = scenario.run_scenario(result_folders=folders)
+        _run_duration = round(time.monotonic() - _mono_start, 2)
+        _run_end_ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        _logger.info("-"*60)
+        _logger.info("Scenario Execution complete")
+        _logger.info("-"*60)
+        _project_logger.info("Experiment runner completed task %s", _task_id)
+        # ensure result is a RunResult
+        if not isinstance(result, RunResult):
+            try:
+                result = RunResult(**result)
+            except ValidationError:
+                msg = (
+                    "Unable to convert Scenario result."
+                    " Unable to update project"
+                )
+                _logger.error(msg)
+                print("ERROR: " + msg)
+                result = RunResult()
 
-    # ensure valid
-    if not isinstance(result, ScenarioResults):
-        try:
-            result = ScenarioResults(**result)
-        except ValidationError:
-            msg = "Unable to convert Scenario result. Unable to update project"
-            _logger.error(msg)
-            print("ERROR: " + msg)
+        # save results.yaml (legacy view — kept for adgtk-results show compat)
+        results_file_w_path = os.path.join(folders.conclusion, RESULTS_FILE)
+        with open(
+            file=results_file_w_path, mode="w", encoding="utf-8"
+        ) as outfile:
+            yaml.safe_dump(result.model_dump(), outfile)
 
-    # no central tracking of results. saving on-disk. less to centrally manage
-    # and if in the future a listing is needed its safer to walk the disk.
-    results_file_w_path = os.path.join(folders.conclusion, RESULTS_FILE)
+        # build and save run.manifest.json + report.md
+        manifest = build_manifest(
+            run_id=run_id,
+            experiment_name=experiment_name,
+            timestamp_start=_run_start_ts,
+            timestamp_end=_run_end_ts,
+            duration_seconds=_run_duration,
+            status="complete",
+            config_snapshot=config.model_dump(),
+            result_metrics=result.metrics,
+            verdict=result.verdict,
+            verdict_note=result.verdict_note,
+            summary=result.summary,
+            tags=result.tags,
+            folders=folders,
+        )
+        save_manifest(manifest, folders.conclusion)
 
-    with open(file=results_file_w_path, mode="w", encoding="utf-8") as outfile:
-        yaml.safe_dump(result.model_dump(), outfile)
-    return (result, folders)
+        run_registry.add_run(RunEntryModel(
+            run_id=run_id,
+            experiment_name=experiment_name,
+            timestamp_start=_run_start_ts,
+            timestamp_end=_run_end_ts,
+            duration_seconds=_run_duration,
+            status="complete",
+            verdict=result.verdict,
+            results_path=folders.root_dir,
+            tags=result.tags,
+        ))
+        return (result, folders)
+    finally:
+        _project_logger.info("Experiment runner is clearing task %s", _task_id)
+        clear_active_task(_task_id)
 
 
 def run_batch(filename: str, print_to_console: bool = True) -> None:
@@ -483,14 +556,8 @@ def run_batch(filename: str, print_to_console: bool = True) -> None:
     Raises:
         FileNotFoundError: If the batch file cannot be located.
     """
-    global _logger
-    if _logger is None:
-        _logger = create_logger(
-            logfile="adgtk.runner.log",
-            logger_name=__name__,
-            subdir="framework",
-            log_to_console=print_to_console or TO_CONSOLE
-        )
+    global _project_logger
+    _project_logger = get_project_logger()
 
     if not _contains_batch_dir(filename):
         filename = os.path.join(BATCH_DEF_DIR, filename)
@@ -500,9 +567,7 @@ def run_batch(filename: str, print_to_console: bool = True) -> None:
 
     if not os.path.exists(filename):
         msg = f"Unable to find batch: {filename}"
-
-        _logger.info(msg)
-
+        _project_logger.info(msg)
         raise FileNotFoundError(msg)
 
     with open(file=filename, mode="r", encoding="utf-8") as infile:
@@ -510,23 +575,63 @@ def run_batch(filename: str, print_to_console: bool = True) -> None:
 
     try:
         batch = BatchDefinition(**data)
-
     except ValidationError:
         msg = f"Corrupt batch file: {filename}"
-        if _logger:
-            _logger.error(msg)
         print(msg)  # always print when this occurs
         sys.exit(1)
 
-    # now run the experiments. serially of course.
-    _logger.info("Starting batch run %s", batch.name)
+    batch_logger = create_logger(
+        logfile="batch.log",
+        logger_name=BATCH_LOGGER_NAME,
+        subdir="runs",
+        experiment_name=batch.name,
+        mode="w",
+        log_to_console=print_to_console or TO_CONSOLE,
+    )
+
+    total = len(batch.experiments)
+    batch_start_ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    batch_mono_start = time.monotonic()
+    batch_logger.info(
+        "Batch start | name=%s | experiments=%d | ts=%s",
+        batch.name, total, batch_start_ts,
+    )
+    _project_logger.info("Starting batch run %s", batch.name)
     print(f"Starting batch run {batch.name}")
+
+    succeeded = 0
+    failed = 0
     for idx, experiment in enumerate(batch.experiments):
         print(f"{datetime.datetime.now()} Running Experiment: {experiment}: "
-              f"{idx} of {len(batch.experiments)}")
-        _logger.info("Batch running experiment %s. %d of %d",
-                     experiment,
-                     idx,
-                     len(batch.experiments))
+              f"{idx + 1} of {total}")
+        _project_logger.info(
+            "Batch running experiment %s. %d of %d",
+            experiment, idx + 1, total,
+        )
+        batch_logger.info(
+            "Experiment start | %d/%d | %s", idx + 1, total, experiment,
+        )
+        exp_mono_start = time.monotonic()
+        try:
+            _ = run_scenario(filename=experiment)
+            exp_duration = round(time.monotonic() - exp_mono_start, 2)
+            batch_logger.info(
+                "Experiment done  | %d/%d | %s | status=ok | duration=%ss",
+                idx + 1, total, experiment, exp_duration,
+            )
+            succeeded += 1
+        except Exception as exc:
+            exp_duration = round(time.monotonic() - exp_mono_start, 2)
+            batch_logger.error(
+                "Experiment done  | %d/%d | %s | status=failed"
+                " | duration=%ss | %s",
+                idx + 1, total, experiment, exp_duration, exc,
+            )
+            failed += 1
 
-        _ = run_scenario(filename=experiment)
+    batch_duration = round(time.monotonic() - batch_mono_start, 2)
+    batch_logger.info(
+        "Batch complete | name=%s | succeeded=%d | failed=%d"
+        " | total_duration=%ss",
+        batch.name, succeeded, failed, batch_duration,
+    )
